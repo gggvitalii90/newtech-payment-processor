@@ -1,0 +1,16 @@
+{
+  "root_folder": "C:\\Users\\Vitaliy\\OneDrive\\work\\new_tech\\_ПП",
+  "output_file": "C:\\Users\\Vitaliy\\OneDrive\\work\\new_tech\\_ПП\\result.xlsx",
+  "reference_file": "C:\\Users\\Vitaliy\\OneDrive\\downloads_one_drive\\Справочник.xlsx",
+  "date_folder_format": "%Y.%m.%d",
+  "modes": {
+    "ПСК": {
+      "sheet_name": "ПСК",
+      "folder_suffix": ""
+    },
+    "ИС": {
+      "sheet_name": "ИС",
+      "folder_suffix": " ИС"
+    }
+  }
+}

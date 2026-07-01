@@ -1,0 +1,227 @@
+{
+  "account_banks": {
+    "40702810003500033560": "б/н Точка",
+    "40702810532250003784": "б/н Альфа",
+    "40802810932180010224": "б/н ИП Мочалов",
+    "40702810332180011648": "б/н ИНВЕСТСТРОЙ",
+    "40702810855000125967": "б/н Сбербанк"
+  },
+  "classification_rules": [
+    {
+      "counterparty_contains": "ИП СОБОЛЕВ",
+      "invoice_number_contains": "207",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Обеспечение офиса",
+      "responsible": "Раздрогина.С",
+      "payment_type": "Безналичные без НДС",
+      "purpose": "Электроэнергия"
+    },
+    {
+      "counterparty_contains": "ИП СОБОЛЕВ",
+      "invoice_number_contains": "1195",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Аренда помещения",
+      "responsible": "Раздрогина.С",
+      "payment_type": "Безналичные без НДС",
+      "purpose": "Ч/о Субаренда помещений июль 2026"
+    },
+    {
+      "counterparty_contains": "ИП Соболев",
+      "invoice_number_contains": "1095",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Аренда помещения",
+      "responsible": "Раздрогина.С",
+      "payment_type": "Безналичные без НДС"
+    },
+    {
+      "counterparty_contains": "СТАРТ",
+      "invoice_number_contains": "1941",
+      "object": "Производство",
+      "project": "Производственные расходы",
+      "budget_item": "Расходники",
+      "responsible": "Соловцов Н."
+    },
+    {
+      "invoice_number_contains": "6327",
+      "object": "Антарес",
+      "project": "КМ ( М )",
+      "budget_item": "Техника",
+      "responsible": "Мочалов.К",
+      "counterparty": "АО \"Автокран Аренда\""
+    },
+    {
+      "counterparty_contains": "АКВАСИТИ",
+      "invoice_number_contains": "75248",
+      "object": "Производство",
+      "project": "Производственные расходы",
+      "budget_item": "Обеспечение производства",
+      "responsible": "Раздрогина.С",
+      "payment_type": "Безналичные без НДС"
+    },
+    {
+      "counterparty_contains": "ТСС",
+      "invoice_number_contains": "12413",
+      "object": "Производство",
+      "project": "Производственные расходы",
+      "budget_item": "Аренда помещения",
+      "responsible": "Раздрогина.С",
+      "purpose": "Интернет"
+    },
+    {
+      "counterparty_contains": "ИНТЕРНЕТ РЕШЕНИЯ",
+      "invoice_number_contains": "0225583270-0019",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Обеспечение офиса",
+      "responsible": "Раздрогина.С",
+      "purpose": "Канцелярия"
+    },
+    {
+      "counterparty_contains": "КАРД-ИНФО СЕРВИС",
+      "purpose_contains": "SP25102324",
+      "object": "Конвертация",
+      "project": "Конвертация",
+      "budget_item": "",
+      "responsible": "Мочалов.К",
+      "purpose": "мурсал"
+    },
+    {
+      "counterparty_contains": "Колисецкий Максим Александрович",
+      "invoice_number_contains": "30572070",
+      "object": "красное знамя",
+      "project": "ПИР",
+      "budget_item": "Подрядчик",
+      "responsible": "Миронова Ю."
+    },
+    {
+      "counterparty_contains": "ИП Мерзликин Евгений Александрович",
+      "invoice_number_contains": "2437509714",
+      "object": "красное знамя",
+      "project": "КМ ( М )",
+      "budget_item": "Подрядчик",
+      "responsible": "Миронова Ю."
+    },
+    {
+      "counterparty_contains": "ИП Бухтояров Илья Викторович",
+      "invoice_number_contains": "3",
+      "object": "Антарес",
+      "project": "АР",
+      "budget_item": "Подрядчик",
+      "responsible": "Родин.К"
+    },
+    {
+      "counterparty_contains": "ИП Муравлёв Сергей Сергеевич",
+      "invoice_number_contains": "38",
+      "object": "ВладРусхолод",
+      "project": "ПИР",
+      "budget_item": "Подрядчик",
+      "responsible": "Миронова Ю."
+    },
+    {
+      "counterparty_contains": "Рысев Игорь Васильевич",
+      "invoice_number_contains": "30566930",
+      "object": "ПСК Ньютек",
+      "project": "Маркетинг",
+      "budget_item": "Сайт",
+      "responsible": "Косичкин.А"
+    },
+    {
+      "counterparty_contains": "РОП НА СВЯЗИ",
+      "invoice_number_contains": "А1001091",
+      "object": "ПСК Ньютек",
+      "project": "Маркетинг",
+      "budget_item": "CRM",
+      "responsible": "Гончаров В."
+    },
+    {
+      "counterparty_contains": "КАКТУС",
+      "object": "ПСК Ньютек",
+      "project": "Маркетинг",
+      "budget_item": "Авито",
+      "responsible": "Гончаров В."
+    },
+    {
+      "counterparty_contains": "КОЛИБРИ",
+      "object": "ПСК Ньютек",
+      "project": "Маркетинг",
+      "budget_item": "АТС",
+      "responsible": "Гончаров В."
+    },
+    {
+      "counterparty_contains": "НФ СОФТ",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Обеспечение офиса",
+      "responsible": "Гончаров В."
+    },
+    {
+      "counterparty_contains": "ТЕНЗОР",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Обеспечение офиса",
+      "responsible": "Раздрогина.С"
+    },
+    {
+      "counterparty_contains": "НИКОЛАЕВА ВАСИЛИСА",
+      "object": "ПСК Ньютек",
+      "project": "Маркетинг",
+      "budget_item": "Дизайнер",
+      "responsible": "Гончаров В."
+    },
+    {
+      "counterparty_contains": "ЕСЬКИН АЛЕКСАНДР",
+      "object": "ПСК Ньютек",
+      "project": "Маркетинг",
+      "budget_item": "",
+      "responsible": "Гончаров В."
+    },
+    {
+      "counterparty_contains": "ППР",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Топливо",
+      "responsible": "Родин.К"
+    },
+    {
+      "counterparty_contains": "КЕХ ЕКОММЕРЦ",
+      "object": "ПСК Ньютек",
+      "project": "Маркетинг",
+      "budget_item": "Авито",
+      "responsible": ""
+    },
+    {
+      "counterparty_contains": "Казначейство",
+      "object": "ПСК Ньютек",
+      "project": "Налог",
+      "budget_item": "Налоги НДФЛ",
+      "responsible": ""
+    },
+    {
+      "counterparty_contains": "ИП СОБОЛЕВ ГЕРМАН РУСЛАНОВИЧ",
+      "invoice_number_contains": "164",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "Аренда помещения",
+      "responsible": "Раздрогина"
+    },
+    {
+      "counterparty_contains": "АС \"ПОМОЩЬ\"",
+      "invoice_number_contains": "59936",
+      "object": "ПСК Ньютек",
+      "project": "Офис",
+      "budget_item": "СРО",
+      "responsible": "Раздрогина"
+    },
+    {
+      "counterparty_contains": "ООО \"ХЭДХАНТЕР\"",
+      "invoice_number_contains": "9401004/116",
+      "object": "ПСК Ньютек",
+      "project": "Найм",
+      "budget_item": "HR",
+      "responsible": "Раздрогина"
+    }
+  ]
+}

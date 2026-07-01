@@ -1,0 +1,56 @@
+from datetime import date
+from pathlib import Path
+
+from scripts.backfill_max_archive import normalize_mode
+from scripts.run_daily_update import build_daily_commands, build_period_commands, find_confirmed_final_payment
+
+
+def test_backfill_normalizes_ascii_modes():
+    assert normalize_mode("PSK") == "\u041f\u0421\u041a"
+    assert normalize_mode("IS") == "\u0418\u0421"
+
+
+def test_daily_commands_update_both_invoice_archives_before_payment_sheets():
+    commands = build_daily_commands(date(2026, 6, 24), Path("stage"), dry_run=False)
+    scripts = [command[1] for command in commands]
+    assert scripts == [
+        "scripts/backfill_max_archive.py",
+        "scripts/backfill_max_archive.py",
+        "scripts/backfill_payment_history.py",
+        "scripts/backfill_payment_history.py",
+    ]
+    assert commands[0][-1] == "\u041f\u0421\u041a"
+    assert commands[1][-1] == "\u0418\u0421"
+    assert "--upsert" in commands[2]
+    assert "--upsert" in commands[3]
+
+
+def test_period_commands_use_requested_start_and_end():
+    commands = build_period_commands(date(2026, 6, 29), date(2026, 6, 30), Path("stage"), dry_run=False)
+
+    for command in commands:
+        assert command[command.index("--start") + 1] == "2026-06-29"
+        assert command[command.index("--end") + 1] == "2026-06-30"
+
+
+def test_daily_dry_run_uses_local_invoice_build_and_does_not_write_sheets():
+    commands = build_daily_commands(date(2026, 6, 24), Path("stage"), dry_run=True)
+    assert "--local-only" in commands[0]
+    assert "--local-only" in commands[1]
+    assert "--dry-run" in commands[2]
+    assert "--dry-run" in commands[3]
+
+
+
+def test_finalization_requires_same_invoice_link_and_payment_date():
+    from payment_processor.invoice_archive import InvoiceArchiveRecord
+    from payment_processor.models import PaymentRecord
+    invoice = InvoiceArchiveRecord(
+        "2026-06-24", "???", "chat", "?????", "invoice.pdf", "pdf", "??????",
+        "??????????? ??? ???", "", '??? "???????"', "15", "2026-06-01",
+        "??? ??????", "????", "??????????", "?????.?", "??????", "1000", "???????",
+        "https://drive.google.com/file/d/invoice-file/view", "mid", "fid", "??",
+    )
+    wrong = PaymentRecord("wrong.pdf", "2026-06-24", "??????", "", "", '??? "???????"', "15", "", "", "", "", "", "https://drive.google.com/file/d/other/view", "1000")
+    right = PaymentRecord("right.pdf", "2026-06-24", "??????", "", "", '??? "???????"', "15", "", "", "", "", "", "https://drive.google.com/file/d/invoice-file/view", "1000")
+    assert find_confirmed_final_payment(invoice, [wrong, right], date(2026, 6, 24)) is right
