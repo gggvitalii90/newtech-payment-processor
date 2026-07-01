@@ -136,10 +136,19 @@ def main() -> int:
     report = {"start_date": start.isoformat(), "end_date": end.isoformat(), "dry_run": args.dry_run, "steps": []}
     exit_code = 0
     for command in build_period_commands(start, end, Path(args.staging_root), args.dry_run):
-        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+        )
+        stdout = result.stdout or ""
+        stderr = result.stderr or ""
         report["steps"].append({
             "command": command[1:], "returncode": result.returncode,
-            "stdout": result.stdout[-4000:], "stderr": result.stderr[-4000:],
+            "stdout": stdout[-4000:], "stderr": stderr[-4000:],
         })
         if result.returncode != 0:
             report["status"] = "error"
