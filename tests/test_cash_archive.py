@@ -608,6 +608,64 @@ def test_parse_standalone_cash_conversion_without_income_or_expense_keyword() ->
         }
     ]
 
+
+def test_parse_cash_conversion_with_unsigned_accountable_amount() -> None:
+    entries = parse_cash_message_entries(
+        _ru(
+            r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f \u0420\u041f\u0413 \u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u041f\u0421\u041a \u0441\u0442\u0440\u043e\u0439\u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b\n"
+            r"\u041f\u043e\u0434 \u043e\u0442\u0447\u0435\u0442 255 000 \u0440"
+        )
+    )
+
+    assert entries == [
+        {
+            "operation_type": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "object_name": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "project": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "budget_item": "",
+            "purpose": _ru(r"\u0420\u041f\u0413 \u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u041f\u0421\u041a \u0441\u0442\u0440\u043e\u0439\u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b"),
+            "amount": "255000",
+        }
+    ]
+
+
+def test_parse_cash_income_conversion_with_unsigned_amount() -> None:
+    entries = parse_cash_message_entries(
+        _ru(r"\u041f\u0440\u0438\u0445\u043e\u0434 \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f \u043f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a\n3 750")
+    )
+
+    assert entries == [
+        {
+            "operation_type": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "object_name": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "project": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "budget_item": "",
+            "purpose": _ru(r"\u043f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a"),
+            "amount": "3750",
+        }
+    ]
+
+
+def test_parse_cash_conversion_with_unsigned_balance_amount() -> None:
+    entries = parse_cash_message_entries(
+        _ru(
+            r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f \u0410\u043d\u0434\u0440\u0435\u0439 \u0413\u0440\u0438\u043d\n"
+            r"\u0418\u041f \u041f\u0435\u0442\u0440\u043e\u0432\n"
+            r"\u043e\u0441\u0442\u0430\u0442\u043e\u043a 121 000"
+        )
+    )
+
+    assert entries == [
+        {
+            "operation_type": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "object_name": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "project": _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+            "budget_item": "",
+            "purpose": _ru(r"\u0410\u043d\u0434\u0440\u0435\u0439 \u0413\u0440\u0438\u043d, \u0418\u041f \u041f\u0435\u0442\u0440\u043e\u0432"),
+            "amount": "121000",
+        }
+    ]
+
 def test_cash_unloading_metal_with_crane_is_equipment_budget() -> None:
     messages = [{
         "timestamp": 1782741600000,

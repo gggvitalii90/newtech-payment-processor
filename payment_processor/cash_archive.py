@@ -162,15 +162,23 @@ def parse_cash_message_entries(text: str) -> list[dict[str, str]]:
     if not text or _is_chat_noise(text):
         return []
     normalized = _norm(text)
-    if normalized.startswith("конвертация"):
+    expense = _u(r"\u0440\u0430\u0441\u0445\u043e\u0434")
+    income = _u(r"\u043f\u0440\u0438\u0445\u043e\u0434")
+    conversion = _u(r"\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f")
+    object_label = _u(r"\u043e\u0431\u044a\u0435\u043a\u0442")
+    accountable = _u(r"\u043f\u043e\u0434 \u043e\u0442\u0447\u0435\u0442")
+    balance = _u(r"\u043e\u0441\u0442\u0430\u0442\u043e\u043a")
+    balance_typo = _u(r"\u043e\u0442\u0430\u0442\u043e\u043a")
+
+    if normalized.startswith(conversion) or normalized.startswith(f"{income} {conversion}"):
         parsed = parse_standalone_cash_conversion(text)
         return [parsed] if parsed else []
-    if ("остаток" in normalized or "отаток" in normalized) and "расход" not in normalized and "приход" not in normalized:
+    if (balance in normalized or balance_typo in normalized) and expense not in normalized and income not in normalized:
         return []
-    if "под отчет" in normalized and "объект" not in normalized:
+    if accountable in normalized and object_label not in normalized:
         parsed = parse_cash_accountable_message(text)
         return [parsed] if parsed else []
-    if "расход" in normalized or "объект" in normalized:
+    if expense in normalized or object_label in normalized:
         if has_cash_field_labels(text):
             structured_entries = parse_cash_structured_message_entries(text)
             if structured_entries:
@@ -180,7 +188,7 @@ def parse_cash_message_entries(text: str) -> list[dict[str, str]]:
             return freeform_entries
         parsed = parse_cash_structured_message(text)
         return [parsed] if parsed else []
-    if "приход" in normalized:
+    if income in normalized:
         freeform_entries = parse_cash_freeform_entries(text)
         if freeform_entries:
             return freeform_entries
@@ -189,22 +197,35 @@ def parse_cash_message_entries(text: str) -> list[dict[str, str]]:
     return []
 
 
+def _u(value: str) -> str:
+    return value.encode("ascii").decode("raw_unicode_escape")
+
+
 def parse_standalone_cash_conversion(text: str) -> dict[str, str] | None:
-    amount = extract_cash_amount(text)
+    amount = extract_cash_amount(text) or extract_unsigned_cash_amount(text)
     if not amount:
         return None
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     if not lines:
         return None
-    purpose = re.sub(r"^конвертация\s*", "", lines[0], flags=re.IGNORECASE).strip(" .,-")
+    prefix = _u(r"^(?:\u043f\u0440\u0438\u0445\u043e\u0434\s+)?\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f\s*")
+    conversion = _u(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f")
+    first_line = re.sub(prefix, "", lines[0], flags=re.IGNORECASE).strip(" .,-")
+    detail_lines = [first_line]
+    for line in lines[1:]:
+        if extract_cash_amount(line) or extract_unsigned_cash_amount(line):
+            continue
+        detail_lines.append(line.strip(" .,-"))
+    purpose = ", ".join(part for part in detail_lines if part)
     return {
-        "operation_type": "Конвертация",
-        "object_name": "Конвертация",
-        "project": "Конвертация",
+        "operation_type": conversion,
+        "object_name": conversion,
+        "project": conversion,
         "budget_item": "",
         "purpose": purpose,
         "amount": amount.lstrip("+"),
     }
+
 
 def has_cash_field_labels(text: str) -> bool:
     return any(re.search(rf"(^|\n)\s*{label}\s*:", text, re.IGNORECASE) for label in ["объект", "проект", "статья", "назначение", "контрагент"])
@@ -466,6 +487,13 @@ def extract_cash_amount(text: str) -> str:
     sign, value = matches[-1]
     cleaned = re.sub(r"\s+", "", value).replace(".", ",")
     return f"{sign}{cleaned}" if sign == "+" else cleaned
+
+
+def extract_unsigned_cash_amount(text: str) -> str:
+    matches = re.findall(r"(?<![\d+-])([1-9]\d{0,2}(?:[ \u00a0]\d{3})+(?:[,.]\d{1,2})?|[1-9]\d{3,}(?:[,.]\d{1,2})?)", text, re.IGNORECASE)
+    if not matches:
+        return ""
+    return re.sub(r"[ \u00a0]+", "", matches[-1]).replace(".", ",")
 
 
 def cash_field_key(label: str) -> str:

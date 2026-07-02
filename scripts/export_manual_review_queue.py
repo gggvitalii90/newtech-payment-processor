@@ -9,8 +9,7 @@ def u(*codes: int) -> str:
     return "".join(chr(code) for code in codes)
 
 
-FINAL_COLUMNS = [
-    chr(0x2116),
+SUMMARY_COLUMNS = [
     u(0x0414,0x0430,0x0442,0x0430),
     u(0x0422,0x0438,0x043f,0x0020,0x043e,0x043f,0x0435,0x0440,0x0430,0x0446,0x0438,0x0438),
     u(0x0422,0x0438,0x043f,0x0020,0x043e,0x043f,0x043b,0x0430,0x0442,0x044b),
@@ -22,7 +21,6 @@ FINAL_COLUMNS = [
     u(0x0421,0x0442,0x0430,0x0442,0x044c,0x044f,0x0020,0x0431,0x044e,0x0434,0x0436,0x0435,0x0442,0x0430),
     u(0x041e,0x0442,0x0432,0x0435,0x0442,0x0441,0x0442,0x0432,0x0435,0x043d,0x043d,0x044b,0x0439),
     u(0x041d,0x0430,0x0437,0x043d,0x0430,0x0447,0x0435,0x043d,0x0438,0x0435,0x0020,0x043f,0x043b,0x0430,0x0442,0x0435,0x0436,0x0430),
-    u(0x0421,0x0441,0x044b,0x043b,0x043a,0x0430,0x0020,0x043d,0x0430,0x0020,0x0441,0x0447,0x0435,0x0442),
     u(0x0421,0x0443,0x043c,0x043c,0x0430),
 ]
 LINK_FIELD = u(0x0421,0x0441,0x044b,0x043b,0x043a,0x0430)
@@ -32,7 +30,7 @@ COMMENT_FIELD = u(0x043a,0x043e,0x043c,0x043c,0x0435,0x043d,0x0442,0x0430,0x0440
 
 def split_row(value: str) -> list[str]:
     values = (value or "").split("|")
-    return values + [""] * (len(FINAL_COLUMNS) - len(values))
+    return values + [""] * (len(SUMMARY_COLUMNS) - len(values))
 
 
 def should_include(row: dict[str, str]) -> bool:
@@ -56,8 +54,8 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
 
     headers = ["date", "status", "score", "amount", "diff_fields", "manual_row", "final_row"]
-    headers += ["manual_" + name for name in FINAL_COLUMNS]
-    headers += ["final_" + name for name in FINAL_COLUMNS]
+    headers += ["manual_" + name for name in SUMMARY_COLUMNS]
+    headers += ["final_" + name for name in SUMMARY_COLUMNS]
     headers += [EXPECTED_FIELD, COMMENT_FIELD]
 
     with output.open("w", encoding="utf-8-sig", newline="") as file:
@@ -70,8 +68,8 @@ def main() -> int:
             manual = split_row(row.get("manual", ""))
             final = split_row(row.get("final", ""))
             out = {key: row.get(key, "") for key in ["date", "status", "score", "amount", "diff_fields", "manual_row", "final_row"]}
-            out.update({"manual_" + name: manual[index] for index, name in enumerate(FINAL_COLUMNS)})
-            out.update({"final_" + name: final[index] for index, name in enumerate(FINAL_COLUMNS)})
+            out.update({"manual_" + name: manual[index] for index, name in enumerate(SUMMARY_COLUMNS)})
+            out.update({"final_" + name: final[index] for index, name in enumerate(SUMMARY_COLUMNS)})
             out[EXPECTED_FIELD] = ""
             out[COMMENT_FIELD] = ""
             writer.writerow(out)
