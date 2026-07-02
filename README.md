@@ -145,3 +145,20 @@ python scripts\reorganize_payment_drive.py
 ```powershell
 python scripts\reorganize_payment_drive.py --apply
 ```
+
+## FinTablo
+
+FinTablo API settings are stored in local `.env`. The first integration phase is read-only. The token must not be committed to git.
+
+```text
+FINTABLO_API_TOKEN=your_api_token
+FINTABLO_BASE_URL=https://api.fintablo.ru
+```
+
+Safe read-only access check:
+
+```powershell
+python scripts\fintablo_readonly_check.py --start 2026-07-01 --end 2026-07-01
+```
+
+The script reads moneybags, categories, partners, directions, deals, employees, and cash-flow transactions for the selected period. It does not create, update, or delete FinTablo data.
