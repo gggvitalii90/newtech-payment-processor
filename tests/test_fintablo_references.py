@@ -1,0 +1,62 @@
+from __future__ import annotations
+
+from payment_processor.fintablo_references import DEFAULT_DEAL_STAGES, build_reference_sync_plan
+
+
+def u(*codes: int) -> str:
+    return "".join(chr(code) for code in codes)
+
+
+AR = u(0x0410, 0x0420, 0x005f)
+KZH = u(0x041a, 0x0416, 0x005f)
+KM_M = u(0x041a, 0x041c, 0x0020, 0x0028, 0x0020, 0x041c, 0x0020, 0x0029)
+KM_PR = u(0x041a, 0x041c, 0x0020, 0x0028, 0x0020, 0x041f, 0x0420, 0x0020, 0x0029)
+BLAGO = u(0x0411, 0x043b, 0x0430, 0x0433, 0x043e, 0x0443, 0x0441, 0x0442, 0x0440, 0x043e, 0x0439, 0x0441, 0x0442, 0x0432, 0x043e)
+PIR = u(0x041f, 0x0418, 0x0420)
+MOB = u(0x041c, 0x043e, 0x0431, 0x0438, 0x043b, 0x0438, 0x0437, 0x0430, 0x0446, 0x0438, 0x044f)
+MATERIALS = u(0x041c, 0x0430, 0x0442, 0x0435, 0x0440, 0x0438, 0x0430, 0x043b, 0x044b)
+CONTRACTOR = u(0x041f, 0x043e, 0x0434, 0x0440, 0x044f, 0x0434, 0x0447, 0x0438, 0x043a)
+PSK = u(0x041f, 0x0421, 0x041a, 0x0020, 0x041d, 0x044c, 0x044e, 0x0442, 0x0435, 0x043a)
+CONVERSION = u(0x041a, 0x043e, 0x043d, 0x0432, 0x0435, 0x0440, 0x0442, 0x0430, 0x0446, 0x0438, 0x044f)
+ALARM = u(0x0410, 0x043b, 0x0430, 0x0440, 0x043c, 0x0020, 0x041c, 0x043e, 0x0442, 0x043e, 0x0440, 0x0441)
+EXTRA_CATEGORY = u(0x041b, 0x0438, 0x0448, 0x043d, 0x044f, 0x044f, 0x0020, 0x0441, 0x0442, 0x0430, 0x0442, 0x044c, 0x044f)
+EXTRA_DEAL = u(0x041b, 0x0438, 0x0448, 0x043d, 0x044f, 0x044f, 0x0020, 0x0441, 0x0434, 0x0435, 0x043b, 0x043a, 0x0430)
+
+
+def test_default_deal_stages_match_google_reference_names() -> None:
+    assert DEFAULT_DEAL_STAGES == [AR, KZH, KM_M, KM_PR, BLAGO, PIR, MOB]
+
+
+def test_reference_sync_plan_detects_missing_categories_deals_and_stages() -> None:
+    dictionaries = {
+        "budget_items": {
+            MATERIALS: [],
+            CONTRACTOR: [],
+        },
+        "objects": {
+            PSK: [],
+            CONVERSION: [],
+            ALARM: [],
+        },
+    }
+    categories = [{"name": MATERIALS}, {"name": EXTRA_CATEGORY}]
+    deals = [
+        {
+            "name": PSK,
+            "stages": [{"name": AR}, {"name": KM_M}],
+        },
+        {
+            "name": EXTRA_DEAL,
+            "stages": [],
+        },
+    ]
+
+    plan = build_reference_sync_plan(dictionaries, categories, deals)
+
+    assert plan.missing_categories == [CONTRACTOR]
+    assert plan.extra_categories == [EXTRA_CATEGORY]
+    assert plan.missing_deals == [ALARM]
+    assert plan.extra_deals == [EXTRA_DEAL]
+    assert plan.missing_stages[PSK] == [KZH, KM_PR, BLAGO, PIR, MOB]
+    assert plan.missing_stages[ALARM] == DEFAULT_DEAL_STAGES
+    assert CONVERSION not in plan.google_deals
