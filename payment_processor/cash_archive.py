@@ -183,6 +183,9 @@ def parse_cash_message_entries(text: str) -> list[dict[str, str]]:
             structured_entries = parse_cash_structured_message_entries(text)
             if structured_entries:
                 return structured_entries
+        compact_entries = parse_cash_compact_multiline_entries(text)
+        if compact_entries:
+            return compact_entries
         freeform_entries = parse_cash_freeform_entries(text)
         if freeform_entries:
             return freeform_entries
@@ -230,6 +233,59 @@ def parse_standalone_cash_conversion(text: str) -> dict[str, str] | None:
 def has_cash_field_labels(text: str) -> bool:
     return any(re.search(rf"(^|\n)\s*{label}\s*:", text, re.IGNORECASE) for label in ["объект", "проект", "статья", "назначение", "контрагент"])
 
+
+
+def parse_cash_compact_multiline_entries(text: str) -> list[dict[str, str]]:
+    lines = [line.strip(" .,;") for line in text.splitlines() if line.strip(" .,;")]
+    entries: list[dict[str, str]] = []
+    current_operation = ""
+    operation_expense = _u(r"\u0420\u0430\u0441\u0445\u043e\u0434")
+    operation_income = _u(r"\u041f\u0440\u0438\u0445\u043e\u0434")
+    idx = 0
+    while idx < len(lines):
+        normalized_line = _norm(lines[idx])
+        if normalized_line in {_norm(operation_expense), _norm(operation_income)}:
+            current_operation = operation_income if normalized_line == _norm(operation_income) else operation_expense
+            idx += 1
+            continue
+        amount = extract_cash_amount(lines[idx])
+        if not amount:
+            idx += 1
+            continue
+        details: list[str] = []
+        idx += 1
+        while idx < len(lines):
+            next_norm = _norm(lines[idx])
+            if next_norm in {_norm(operation_expense), _norm(operation_income)} or extract_cash_amount(lines[idx]):
+                break
+            if cash_field_key(lines[idx].split(":", 1)[0]):
+                break
+            details.append(lines[idx])
+            idx += 1
+        if len(details) < 3:
+            continue
+        entry = {
+            "operation_type": current_operation or (operation_income if amount.startswith("+") else operation_expense),
+            "amount": amount,
+            "object_name": details[0],
+            "project": details[1],
+            "budget_item": details[2],
+        }
+        remaining = details[3:]
+        if remaining and looks_like_cash_responsible(remaining[-1]):
+            entry["responsible"] = remaining[-1]
+            remaining = remaining[:-1]
+        if remaining:
+            entry["purpose"] = ", ".join(remaining)
+        entries.append(entry)
+    return entries
+
+
+def looks_like_cash_responsible(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    return bool(re.fullmatch(r"[А-ЯЁA-Z][А-ЯЁA-Zа-яёa-z-]+\.?\s*[А-ЯЁA-Z]\.?", text))
 
 def parse_cash_freeform_entries(text: str) -> list[dict[str, str]]:
     normalized = _norm(text)

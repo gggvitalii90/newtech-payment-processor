@@ -788,7 +788,11 @@ def enrich_payment_records_from_archive(
         ):
             archive_field = "google_drive_link" if field == "invoice_link" else field
             value = getattr(archive, archive_field).strip()
-            if value and (field == "invoice_link" or not getattr(payment, field).strip()):
+            current_value = getattr(payment, field).strip()
+            can_replace = field == "invoice_link" or not current_value
+            if field == "budget_item" and _is_unallocated_fintablo_category(current_value):
+                can_replace = True
+            if value and can_replace:
                 setattr(payment, field, value)
         archive_purpose = archive.purpose.strip()
         if archive_purpose and _should_use_archive_purpose(payment.purpose, archive_purpose):
@@ -799,6 +803,14 @@ def enrich_payment_records_from_archive(
     return matched
 
 
+
+
+def _is_unallocated_fintablo_category(value: str) -> bool:
+    key = _normalize_archive_key(value)
+    return key in {
+        "\u043d\u0435\u0440\u0430\u0437\u043d\u0435\u0441\u0435\u043d\u043d\u043e\u0435 \u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435",
+        "\u043d\u0435\u0440\u0430\u0437\u043d\u0435\u0441\u0435\u043d\u043d\u043e\u0435 \u043f\u043e\u0441\u0442\u0443\u043f\u043b\u0435\u043d\u0438\u0435",
+    }
 
 def _should_use_archive_purpose(payment_purpose: str, archive_purpose: str) -> bool:
     payment_key = _normalize_archive_key(payment_purpose)
@@ -1673,6 +1685,7 @@ def _field_key(label: str) -> str:
         if normalized in aliases:
             return field
     return ""
+
 
 
 

@@ -718,3 +718,30 @@ def test_cash_credit_for_lift_moves_auto_from_budget_to_object():
     assert records[0].object_name == "Автохозяйство"
     assert records[0].project == "Подъемник"
     assert records[0].budget_item == "Кредит"
+
+
+
+def test_parse_cash_compact_multiline_expense_with_responsible() -> None:
+    entries = parse_cash_message_entries(
+        _ru(
+            r"\u0420\u0430\u0441\u0445\u043e\u0434\n"
+            r"-3 000\n"
+            r"\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u043e\n"
+            r"\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0435 \u0440\u0430\u0441\u0445\u043e\u0434\u044b\n"
+            r"\u041e\u0431\u0435\u0441\u043f\u0435\u0447\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0430\n"
+            r"\u041c\u0435\u0442\u0430\u043b\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0440\u0443\u043b\u0435\u0442\u043a\u0438 \u0441 \u043b\u0430\u0437\u0435\u0440\u043e\u043c\n"
+            r"\u0420\u043e\u0434\u0438\u043d.\u041a"
+        )
+    )
+
+    assert entries == [
+        {
+            "operation_type": _ru(r"\u0420\u0430\u0441\u0445\u043e\u0434"),
+            "amount": "3000",
+            "object_name": _ru(r"\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u043e"),
+            "project": _ru(r"\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0435 \u0440\u0430\u0441\u0445\u043e\u0434\u044b"),
+            "budget_item": _ru(r"\u041e\u0431\u0435\u0441\u043f\u0435\u0447\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0430"),
+            "purpose": _ru(r"\u041c\u0435\u0442\u0430\u043b\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0440\u0443\u043b\u0435\u0442\u043a\u0438 \u0441 \u043b\u0430\u0437\u0435\u0440\u043e\u043c"),
+            "responsible": _ru(r"\u0420\u043e\u0434\u0438\u043d.\u041a"),
+        }
+    ]

@@ -19,6 +19,8 @@ from payment_processor.env import load_env
 from payment_processor.google_api import build_drive_service, build_sheets_service, get_credentials, load_google_settings
 from payment_processor.google_archive import read_archive_records
 from payment_processor.google_payments import final_sheet_name_for_mode
+from payment_processor.fintablo_client import FinTabloClient, load_fintablo_settings
+from payment_processor.fintablo_transactions import fetch_fintablo_payment_records
 from payment_processor.history_backfill import BackfillState, run_resumable_days
 from payment_processor.history_runner import write_google_history
 from payment_processor.invoice_archive import create_invoice_archive_records, invoice_text_operation_records_to_payment_records
@@ -59,6 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--upsert", action="store_true", help="???????? ?????? ?????? ??????? ??? ??????? ???????")
     parser.add_argument("--reset-state", action="store_true")
     parser.add_argument("--staging-root", default=r"C:\tmp\newtech-payment-history")
+    parser.add_argument("--payment-source", choices=["max", "fintablo"], default="max", help="???????? ????? ??? ????????; ????? ?? ???????? ?? PDF")
     return parser.parse_args()
 
 
@@ -178,6 +181,17 @@ def main() -> int:
     raw_payment_record_count = len(payment_records)
     payment_records = dedupe_payment_records_by_identity(payment_records)
     semantic_duplicates = raw_payment_record_count - len(payment_records)
+    final_payment_records = payment_records
+    fintablo_payment_count = 0
+    if args.payment_source == "fintablo":
+        final_payment_records = dedupe_payment_records_by_identity(
+            fetch_fintablo_payment_records(
+                FinTabloClient(load_fintablo_settings(env)),
+                start_date,
+                end_date,
+            )
+        )
+        fintablo_payment_count = len(final_payment_records)
     if not args.dry_run:
         for record in payment_records:
             if record.invoice_link or not record.date:
@@ -220,7 +234,7 @@ def main() -> int:
     )
     cash_records = cash_records_to_payment_records(cash_archive_records)
     final_records, matched_count = build_final_history(
-        payment_records,
+        final_payment_records,
         invoice_records,
         cash_records,
         direct_records,
@@ -234,7 +248,8 @@ def main() -> int:
     issues = [
         *parse_issues,
         *validate_payment_records(payment_records),
-        *unmatched_invoice_issues(payment_records, invoice_records),
+        *validate_payment_records(final_payment_records),
+        *unmatched_invoice_issues(final_payment_records, invoice_records),
         *duplicate_issues,
     ]
 
@@ -255,6 +270,8 @@ def main() -> int:
         "pdf_paths": len(paths),
         "unique_pdf_sha256": len(unique_paths),
         "payment_records": len(payment_records),
+        "payment_source": args.payment_source,
+        "fintablo_payment_records": fintablo_payment_count,
         "semantic_duplicates": semantic_duplicates,
         "payment_links": linked_payments,
         "missing_payment_links": missing_payment_links,

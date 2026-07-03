@@ -11,6 +11,7 @@ from googleapiclient.errors import HttpError
 
 from .dictionaries import DEFAULT_UNRESOLVED_STATUS, normalize_key
 from .google_api import (
+    create_child_folder,
     find_child_folder_id,
     list_child_files,
     list_child_folders,
@@ -261,7 +262,7 @@ def prepare_records_for_google_drive(
             if not record.analysis_status:
                 record.analysis_status = "\u041e\u041a"
             continue
-        existing_link = find_existing_file_link_in_folder_tree(drive_service, root_folder_id, file_path)
+        existing_link = find_existing_file_link_by_name_and_md5(drive_service, file_path, record.file_name, root_folder_id)
         if existing_link:
             record.google_drive_link = existing_link
             if not record.analysis_status:
@@ -322,6 +323,26 @@ def find_existing_file_link_in_folder_tree(drive_service, folder_id: str, file_p
     return ""
 
 
+
+def find_existing_file_link_by_name_and_md5(drive_service, file_path: Path, file_name: str = "", root_folder_id: str = "") -> str:
+    if root_folder_id and hasattr(drive_service, "children"):
+        return find_existing_file_link_in_folder_tree(drive_service, root_folder_id, file_path)
+    digest = _file_md5(file_path)
+    if not digest:
+        return ""
+    drive_file_name = (file_name or file_path.name).replace("'", "\\'")
+    response = drive_service.files().list(
+        q=f"name = '{drive_file_name}' and trashed = false",
+        fields="files(id,name,webViewLink,md5Checksum)",
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
+        pageSize=100,
+    ).execute()
+    for item in response.get("files", []):
+        if str(item.get("md5Checksum", "")).lower() == digest:
+            return str(item.get("webViewLink", ""))
+    return ""
+
 def _file_md5(path: Path) -> str:
     digest = hashlib.md5()
     with path.open("rb") as handle:
@@ -341,6 +362,8 @@ def resolve_drive_archive_folder(
     if not object_folder_name:
         return ""
     object_folder_id = find_child_folder_id(drive_service, root_folder_id, object_folder_name)
+    if not object_folder_id and _known_drive_object(record.object_name, dictionaries):
+        object_folder_id = create_child_folder(drive_service, root_folder_id, object_folder_name)
     if not object_folder_id:
         return ""
     today = today or date.today()
@@ -358,6 +381,16 @@ def resolve_drive_archive_folder(
         return ""
     return ensure_month_folder_id(drive_service, year_folder_id, record, dictionaries)
 
+
+
+def _known_drive_object(object_name: str, dictionaries: dict[str, Any]) -> bool:
+    key = normalize_key(object_name)
+    objects = dictionaries.get("objects", {})
+    if isinstance(objects, dict):
+        return any(normalize_key(str(value)) == key for value in objects)
+    if isinstance(objects, list):
+        return any(normalize_key(str(value)) == key for value in objects)
+    return False
 
 def find_month_folder_id(
     drive_service,

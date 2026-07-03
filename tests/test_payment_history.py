@@ -474,3 +474,17 @@ def test_final_history_learns_may_04_manual_patterns() -> None:
     assert by_name["ms.pdf"].purpose == "Арматура Лизан"
     assert by_name["furniture.pdf"].purpose == "Жилин мебель"
 
+
+
+def test_build_final_history_replaces_fintablo_unallocated_category_from_invoice() -> None:
+    row = payment("fintablo:1", payment_date="2026-07-02", counterparty=u("\\u041e\\u041e\\u041e \\\"\\u0411\\u0415\\u041b\\u0422\\u0420\\u0410\\u041d\\u0421\\u0410\\u0412\\u0422\\u041e\\\""), invoice="49")
+    row.budget_item = u("\\u041d\\u0435\\u0440\\u0430\\u0437\\u043d\\u0435\\u0441\\u0435\\u043d\\u043d\\u043e\\u0435 \\u0441\\u043f\\u0438\\u0441\\u0430\\u043d\\u0438\\u0435")
+    source = invoice(counterparty=u("\\u041e\\u041e\\u041e \\\"\\u0411\\u0415\\u041b\\u0422\\u0420\\u0410\\u041d\\u0421\\u0410\\u0412\\u0422\\u041e\\\""), number="49")
+    source.budget_item = u("\\u0422\\u0435\\u0445\\u043d\\u0438\\u043a\\u0430")
+
+    final, matched = build_final_history([row], [source], [], [])
+
+    assert matched == 1
+    assert final[0].budget_item == u("\\u0422\\u0435\\u0445\\u043d\\u0438\\u043a\\u0430")
+    assert final[0].object_name == u("\\u041f\\u0421\\u041a \\u041d\\u044c\\u044e\\u0442\\u0435\\u043a")
+    assert final[0].invoice_link == "https://drive/invoice"

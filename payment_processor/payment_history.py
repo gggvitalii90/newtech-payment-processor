@@ -167,6 +167,8 @@ def build_final_history(
             continue
         expanded.extend(_expand_final_record(record))
     expanded.sort(key=_record_sort_key)
+    for record in expanded:
+        record.date = _display_date(record.date)
     return expanded, matched_count
 
 
@@ -179,6 +181,14 @@ def _should_skip_final_record(record: PaymentRecord) -> bool:
     text = " ".join([_classification_text(record.purpose), _classification_text(record.budget_item), _classification_text(record.project)])
     return "\u043d\u0435 \u0437\u0430\u043d\u043e\u0441\u0438" in text or "\u043f\u043e\u043a\u0430 \u043d\u0435 \u0437\u0430\u043d\u043e\u0441" in text
 
+
+def _display_date(value: str) -> str:
+    key = _record_date_key(value)
+    match = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", key)
+    if match:
+        year, month, day = match.groups()
+        return f"{day}.{month}.{year}"
+    return str(value or "").strip()
 
 def _record_date_key(value: str) -> str:
     text = str(value or "").strip()
@@ -826,6 +836,7 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
 
 
 

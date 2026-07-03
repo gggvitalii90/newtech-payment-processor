@@ -26,6 +26,76 @@ TECHNICAL_OBJECTS = {
 }
 
 
+# Categories that exist in the Google reference but were explicitly marked as
+# "do not create" during the FinTablo review. They stay valid for our sheet
+# parser, but should not be treated as missing FinTablo categories.
+IGNORED_MISSING_CATEGORIES = {
+    '\u0413\u0415\u041d\u0410',
+    '\u0413\u0440\u0438\u0433\u043e\u0440\u044c\u0435\u0432 \u0421.',
+    '\u041a\u043e\u0440\u044f\u043a\u0438\u043d',
+    '\u041a\u0440\u0438\u0441\u0442\u0430\u043b \u0414\u0430\u043d\u0438\u0438\u043b',
+    '\u041c\u0430\u043a\u0430\u0440\u043e\u0432.\u041c',
+    '\u041c\u0443\u0440\u0430\u0448\u0435\u0432.\u0412',
+    '\u041d\u044c\u044e\u0442\u0435\u043a \u041c\u0438\u0445\u0430\u0438\u043b',
+    '\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u043e',
+    '\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a',
+    '\u0420\u041f\u0413 \u0410\u043d\u0442\u043e\u043d',
+    '\u0422\u0435\u0431\u0435\u043d\u043a\u043e \u041a.',
+    '\u0424\u0435\u0440\u0443\u0441 \u0421\u0435\u0440\u0433\u0435\u0439',
+}
+
+# Built-in/grouping/legacy FinTablo categories approved to keep. Some of them
+# cannot be deleted because FinTablo has existing transactions linked to them.
+IGNORED_EXTRA_CATEGORIES = {
+    '\u041d\u0435\u0440\u0430\u0437\u043d\u0435\u0441\u0435\u043d\u043d\u043e\u0435 \u043f\u043e\u0441\u0442\u0443\u043f\u043b\u0435\u043d\u0438\u0435',
+    '\u041d\u0435\u0440\u0430\u0437\u043d\u0435\u0441\u0435\u043d\u043d\u043e\u0435 \u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435',
+    '\u041f\u0435\u0440\u0435\u0432\u043e\u0434 \u043c\u0435\u0436\u0434\u0443 \u0441\u0447\u0435\u0442\u0430\u043c\u0438',
+    '\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f \u0432\u0430\u043b\u044e\u0442',
+    '\u0412\u0432\u043e\u0434 \u0441\u0440\u0435\u0434\u0441\u0442\u0432',
+    '\u0412\u044b\u0432\u043e\u0434 \u043f\u0440\u0438\u0431\u044b\u043b\u0438',
+    '\u041d\u0430\u043b\u043e\u0433\u0438 \u043d\u0430 \u0434\u043e\u0445\u043e\u0434\u044b (\u043f\u0440\u0438\u0431\u044b\u043b\u044c)',
+    '\u041d\u0430\u043b\u043e\u0433\u0438 \u0437\u0430 \u0441\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a\u043e\u0432',
+    '\u041d\u0414\u0424\u041b',
+    '\u0412\u0437\u043d\u043e\u0441\u044b \u0432 \u0444\u043e\u043d\u0434\u044b',
+    '\u041f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u0435 \u043a\u0440\u0435\u0434\u0438\u0442\u0430',
+    '\u0412\u044b\u043f\u043b\u0430\u0442\u0430 \u0442\u0435\u043b\u0430 \u043a\u0440\u0435\u0434\u0438\u0442\u0430',
+    '\u041f\u0440\u043e\u0446\u0435\u043d\u0442\u044b \u043f\u043e \u043a\u0440\u0435\u0434\u0438\u0442\u0443',
+    '\u0417\u0430\u043a\u0443\u043f\u043a\u0438',
+    '\u041f\u043e\u043a\u0443\u043f\u043a\u0430 \u043e\u0441\u043d\u043e\u0432\u043d\u044b\u0445 \u0441\u0440\u0435\u0434\u0441\u0442\u0432',
+    '\u041f\u0440\u043e\u0434\u0430\u0436\u0430 \u043e\u0441\u043d\u043e\u0432\u043d\u044b\u0445 \u0441\u0440\u0435\u0434\u0441\u0442\u0432',
+    '\u041c\u0430\u0440\u043a\u0435\u0442\u0438\u043d\u0433',
+    '\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u043e\u0444\u0438\u0441)',
+    '\u041e\u0444\u0438\u0441',
+    '\u041d\u0430\u0439\u043c',
+    '\u0411\u0430\u043d\u043a',
+    '\u0424\u041e\u0422',
+    '\u041b\u0435\u0433\u043a\u043e\u0432\u044b\u0435 \u0430\u0432\u0442\u043e',
+    '\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e',
+    '\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0435 \u0440\u0430\u0441\u0445\u043e\u0434\u044b',
+    '\u0410\u0432\u0430\u043d\u0441',
+    '\u041d\u0435 \u0437\u0430\u043d\u043e\u0441\u0438\u0442\u044c',
+    '\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u043f\u0440)',
+    '\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u043e\u0431)',
+    '\u0418\u043d\u0432\u0435\u0441\u0442\u0438\u0446\u0438\u0438',
+    '\u041d\u0414\u0421',
+    '\u0420\u0435\u043c\u043e\u043d\u0442',
+    '\u0414\u043e\u043b\u0433',
+    '\u0412\u043e\u0437\u0432\u0440\u0430\u0442',
+    '\u041c\u0435\u0442\u0430\u043b\u043b\u043e\u043b\u043e\u043c',
+    '\u0431\u0440\u0438\u0433\u0430\u0434\u0430 \u0416\u0438\u043b\u0438\u043d',
+    '\u0414\u0438\u0432\u0438\u0434\u0435\u043d\u0434\u044b',
+    '\u0410\u0433\u0435\u043d\u0441\u043a\u043e\u0435 \u0432\u043e\u0437\u043d\u0430\u0433\u0440\u0430\u0436\u0434\u0435\u043d\u0438\u0435',
+    '\u0420\u041e\u041f',
+}
+
+IGNORED_EXTRA_DEALS = {
+    '\u0410\u0440\u043d\u0435\u0441\u0442 - \u041a\u0430\u0432\u043a\u0430\u0437',
+    '\u041e\u041e\u041e \u041d\u043e\u0432\u044b\u0439 \u0414\u043e\u043c (\u0438\u043d\u0432\u0435\u0441\u0442)',
+    '\u041f\u0420\u041e \u0412\u043e\u0434\u043e\u0440\u043e\u0434',
+    '\u041c\u0438\u043d\u0442\u0435\u0445\u043f\u0440\u043e\u0438',
+}
+
+
 @dataclass(frozen=True)
 class ReferenceSyncPlan:
     google_categories: list[str]
@@ -71,10 +141,10 @@ def build_reference_sync_plan(
     fintablo_category_names = _names(fintablo_categories)
     fintablo_deal_names = _names(fintablo_deals)
 
-    missing_categories = _missing(google_categories, fintablo_category_names)
-    extra_categories = _missing(fintablo_category_names, google_categories)
+    missing_categories = _filter_ignored(_missing(google_categories, fintablo_category_names), IGNORED_MISSING_CATEGORIES)
+    extra_categories = _filter_ignored(_missing(fintablo_category_names, google_categories), IGNORED_EXTRA_CATEGORIES)
     missing_deals = _missing(google_deals, fintablo_deal_names)
-    extra_deals = _missing(fintablo_deal_names, google_deals)
+    extra_deals = _filter_ignored(_missing(fintablo_deal_names, google_deals), IGNORED_EXTRA_DEALS)
     missing_stages = _missing_deal_stages(google_deals, fintablo_deals, default_stages)
 
     return ReferenceSyncPlan(
@@ -127,6 +197,11 @@ def _dedupe_preserve_order(values) -> list[str]:
 def _missing(left: list[str], right: list[str]) -> list[str]:
     right_keys = {normalize_key(value) for value in right}
     return [value for value in left if normalize_key(value) not in right_keys]
+
+
+def _filter_ignored(values: list[str], ignored: set[str]) -> list[str]:
+    ignored_keys = {normalize_key(value) for value in ignored}
+    return [value for value in values if normalize_key(value) not in ignored_keys]
 
 
 def _missing_deal_stages(google_deals: list[str], fintablo_deals: list[dict[str, Any]], default_stages: list[str]) -> dict[str, list[str]]:

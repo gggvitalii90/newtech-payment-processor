@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from .dictionaries import normalize_key
@@ -38,6 +38,8 @@ def resolve_payment_month_folder(
 ) -> str:
     mapped = _mapped_value(dictionaries.get("drive_object_folders", {}), object_name) or object_name
     object_folder_id = find_child_folder_id(drive_service, root_folder_id, mapped)
+    if not object_folder_id and _known_drive_object(object_name, dictionaries):
+        object_folder_id = create_child_folder(drive_service, root_folder_id, mapped)
     if not object_folder_id:
         return ""
     today = today or date.today()
@@ -74,9 +76,8 @@ def archive_paid_invoice(
         return {"status": "skipped_link_mismatch"}
     if _norm(invoice.invoice_number) != _norm(payment.invoice_number):
         return {"status": "skipped_invoice_mismatch"}
-    try:
-        paid_on = date.fromisoformat(payment.date[:10])
-    except ValueError:
+    paid_on = _parse_payment_date(payment.date)
+    if paid_on is None:
         return {"status": "skipped_invalid_payment_date"}
     folder_id = resolve_payment_month_folder(
         drive_service, root_folder_id, invoice.object_name, paid_on, dictionaries, today=today,
@@ -110,6 +111,30 @@ def migrate_legacy_review_folder(drive_service, root_folder_id: str) -> dict[str
         trashed = False
     return {"moved": len(files), "legacy_folder_trashed": trashed}
 
+
+
+def _parse_payment_date(value: str) -> date | None:
+    text = (value or "").strip()
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        pass
+    for fmt in ("%d.%m.%Y", "%Y.%m.%d"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _known_drive_object(object_name: str, dictionaries: dict[str, Any]) -> bool:
+    key = normalize_key(object_name)
+    objects = dictionaries.get("objects", {})
+    if isinstance(objects, dict):
+        return any(normalize_key(str(value)) == key for value in objects)
+    if isinstance(objects, list):
+        return any(normalize_key(str(value)) == key for value in objects)
+    return False
 
 def _mapped_value(mapping: dict[str, str], value: str) -> str:
     key = normalize_key(value)

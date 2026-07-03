@@ -54,3 +54,10 @@ def test_finalization_requires_same_invoice_link_and_payment_date():
     wrong = PaymentRecord("wrong.pdf", "2026-06-24", "??????", "", "", '??? "???????"', "15", "", "", "", "", "", "https://drive.google.com/file/d/other/view", "1000")
     right = PaymentRecord("right.pdf", "2026-06-24", "??????", "", "", '??? "???????"', "15", "", "", "", "", "", "https://drive.google.com/file/d/invoice-file/view", "1000")
     assert find_confirmed_final_payment(invoice, [wrong, right], date(2026, 6, 24)) is right
+
+
+def test_daily_commands_can_use_fintablo_payment_source():
+    commands = build_daily_commands(date(2026, 7, 2), Path("stage"), dry_run=False, payment_source="fintablo")
+    payment_commands = commands[2:]
+    for command in payment_commands:
+        assert command[command.index("--payment-source") + 1] == "fintablo"

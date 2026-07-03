@@ -5,7 +5,7 @@ import csv
 import json
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,11 +24,11 @@ from payment_processor.models import PaymentRecord
 from payment_processor.telegram_notify import format_update_notification, send_telegram_message
 
 
-def build_daily_commands(day: date, staging_root: Path, dry_run: bool) -> list[list[str]]:
-    return build_period_commands(day, day, staging_root, dry_run)
+def build_daily_commands(day: date, staging_root: Path, dry_run: bool, payment_source: str = "max") -> list[list[str]]:
+    return build_period_commands(day, day, staging_root, dry_run, payment_source)
 
 
-def build_period_commands(start: date, end: date, staging_root: Path, dry_run: bool) -> list[list[str]]:
+def build_period_commands(start: date, end: date, staging_root: Path, dry_run: bool, payment_source: str = "max") -> list[list[str]]:
     start_text = start.isoformat()
     end_text = end.isoformat()
     commands: list[list[str]] = []
@@ -42,6 +42,7 @@ def build_period_commands(start: date, end: date, staging_root: Path, dry_run: b
         command = [
             sys.executable, "scripts/backfill_payment_history.py", "--start", start_text, "--end", end_text,
             "--mode", mode, "--upsert", "--staging-root", str(staging_root),
+            "--payment-source", payment_source,
         ]
         if dry_run:
             command.append("--dry-run")
@@ -60,7 +61,7 @@ def find_confirmed_final_payment(
         return None
     matches = [
         record for record in final_records
-        if record.date == day.isoformat()
+        if _same_day(record.date, day)
         and extract_google_id(record.invoice_link) == invoice_file_id
         and _norm_invoice(record.invoice_number) == _norm_invoice(invoice.invoice_number)
     ]
@@ -113,7 +114,23 @@ def _read_final_records(sheets, spreadsheet_id: str, sheet_name: str, day: date)
     rows = sheets.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id, range=f"'{sheet_name}'!A2:N",
     ).execute().get("values", [])
-    return [PaymentRecord.from_row(row) for row in rows if len(row) > 1 and row[1] == day.isoformat()]
+    return [PaymentRecord.from_row(row) for row in rows if len(row) > 1 and _same_day(row[1], day)]
+
+
+def _same_day(value: str, day: date) -> bool:
+    text = (value or "").strip()
+    if text == day.isoformat():
+        return True
+    try:
+        return date.fromisoformat(text) == day
+    except ValueError:
+        pass
+    for fmt in ("%d.%m.%Y", "%Y.%m.%d"):
+        try:
+            return datetime.strptime(text, fmt).date() == day
+        except ValueError:
+            continue
+    return False
 
 
 def _norm_invoice(value: str) -> str:
@@ -127,15 +144,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--staging-root", default=r"C:\tmp\newtech-payment-history")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-telegram", action="store_true")
+    parser.add_argument("--payment-source", choices=["max", "fintablo"], default="max")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     start, end = _selected_period(args)
-    report = {"start_date": start.isoformat(), "end_date": end.isoformat(), "dry_run": args.dry_run, "steps": []}
+    report = {"start_date": start.isoformat(), "end_date": end.isoformat(), "dry_run": args.dry_run, "payment_source": args.payment_source, "steps": []}
     exit_code = 0
-    for command in build_period_commands(start, end, Path(args.staging_root), args.dry_run):
+    for command in build_period_commands(start, end, Path(args.staging_root), args.dry_run, args.payment_source):
         result = subprocess.run(
             command,
             cwd=ROOT,

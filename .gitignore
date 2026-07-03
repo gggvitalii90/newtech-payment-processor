@@ -10,6 +10,7 @@ logs/
 tmp_result.xlsx
 .google_token*.json
 reports/
+outputs/
 .staging/
 .codex-remote-attachments/
 .pytest_tmp*/

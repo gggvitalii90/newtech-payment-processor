@@ -90,6 +90,21 @@ class FinTabloClient:
         query = {"dateFrom": date_from, "dateTo": date_to, **params}
         return self.get_all("/v1/transaction", params=query)
 
+    def create_category(self, payload: dict[str, Any]) -> FinTabloResponse:
+        return self.request_json("POST", "/v1/category", payload=payload)
+
+    def update_category(self, category_id: int | str, payload: dict[str, Any]) -> FinTabloResponse:
+        return self.request_json("PUT", f"/v1/category/{category_id}", payload=payload)
+
+    def delete_category(self, category_id: int | str) -> FinTabloResponse:
+        return self.request_json("DELETE", f"/v1/category/{category_id}")
+
+    def create_deal(self, payload: dict[str, Any]) -> FinTabloResponse:
+        return self.request_json("POST", "/v1/deal", payload=payload)
+
+    def add_deal_stage(self, deal_id: int | str, name: str) -> FinTabloResponse:
+        return self.request_json("POST", f"/v1/deal/{deal_id}/add-stage", payload={"name": name})
+
     def get_all(
         self,
         path: str,
@@ -140,6 +155,34 @@ class FinTabloClient:
         if not isinstance(raw_items, list):
             raise FinTabloError(f"FinTablo API returned non-list items for {path}; request_id={request_id}")
         return FinTabloResponse(status=int(payload.get("status") or status), items=raw_items, request_id=request_id)
+
+    def request_json(self, method: str, path: str, *, payload: dict[str, Any] | None = None) -> FinTabloResponse:
+        data = None
+        headers = {
+            "Authorization": f"Bearer {self.settings.token}",
+            "Accept": "application/json",
+        }
+        if payload is not None:
+            data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            headers["Content-Type"] = "application/json; charset=utf-8"
+        request = Request(
+            f"{self.settings.base_url}{path}",
+            data=data,
+            headers=headers,
+            method=method.upper(),
+        )
+        status, response_headers, body = self.transport(request, self.timeout)
+        request_id = response_headers.get("X-Request-Id") or response_headers.get("x-request-id") or ""
+        payload_data = _decode_payload(body)
+        if status < 200 or status >= 300:
+            message = payload_data.get("statusText") or payload_data.get("message") or body.decode("utf-8", errors="replace")
+            raise FinTabloError(f"FinTablo API HTTP {status}: {message}; request_id={request_id}")
+        if int(payload_data.get("status") or status) != 200:
+            raise FinTabloError(f"FinTablo API status {payload_data.get('status')}: {payload_data.get('statusText', '')}; request_id={request_id}")
+        raw_items = payload_data.get("items") or []
+        if raw_items and not isinstance(raw_items, list):
+            raise FinTabloError(f"FinTablo API returned non-list items for {path}; request_id={request_id}")
+        return FinTabloResponse(status=int(payload_data.get("status") or status), items=raw_items, request_id=request_id)
 
 
 def _decode_payload(body: bytes) -> dict[str, Any]:
