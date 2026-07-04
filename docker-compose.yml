@@ -9,7 +9,9 @@ services:
       GOOGLE_CLIENT_SECRET_FILE: /app/secrets/google_client_secret_current.json
       GOOGLE_TOKEN_FILE: /app/secrets/.google_token.json
     volumes:
+      - ./.env:/app/.env:ro
       - ./data:/data
       - ./reports:/app/reports
       - ./secrets:/app/secrets
     restart: "no"
+
