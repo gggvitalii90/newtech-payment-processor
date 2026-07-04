@@ -3,12 +3,19 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/newtech-payment-processor}"
 PAYMENT_SOURCE="${PAYMENT_SOURCE:-max}"
+STAGING_ROOT="${STAGING_ROOT:-/data/payment-history}"
 START_DATE="${START_DATE:-$(date -d 'yesterday' +%F)}"
 END_DATE="${END_DATE:-$(date +%F)}"
+DRY_RUN_ARGS=()
+if [[ "${DRY_RUN:-0}" == "1" ]]; then
+  DRY_RUN_ARGS+=("--dry-run" "--no-telegram")
+fi
 
 cd "$APP_DIR"
 
 docker compose run --rm daily python scripts/run_daily_update.py \
   --start "$START_DATE" \
   --end "$END_DATE" \
-  --payment-source "$PAYMENT_SOURCE"
+  --payment-source "$PAYMENT_SOURCE" \
+  --staging-root "$STAGING_ROOT" \
+  "${DRY_RUN_ARGS[@]}"
