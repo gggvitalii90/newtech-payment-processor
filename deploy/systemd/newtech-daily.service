@@ -1,0 +1,12 @@
+[Unit]
+Description=NewTech payment processor daily update
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=newtech
+Group=newtech
+WorkingDirectory=/opt/newtech-payment-processor
+ExecStart=/opt/newtech-payment-processor/deploy/run_daily.sh

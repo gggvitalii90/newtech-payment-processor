@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 
@@ -29,7 +30,16 @@ def load_json(path: Path, default: dict) -> dict:
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
-    return load_json(path, DEFAULT_CONFIG)
+    config = load_json(path, DEFAULT_CONFIG)
+    env_overrides = {
+        "root_folder": os.getenv("NEWTECH_ROOT_FOLDER"),
+        "output_file": os.getenv("NEWTECH_OUTPUT_FILE"),
+        "reference_file": os.getenv("NEWTECH_REFERENCE_FILE"),
+    }
+    for key, value in env_overrides.items():
+        if value:
+            config[key] = value
+    return config
 
 
 def load_rules(path: Path = DEFAULT_RULES_PATH) -> dict:

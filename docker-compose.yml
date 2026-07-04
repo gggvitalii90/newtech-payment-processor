@@ -1,0 +1,15 @@
+services:
+  daily:
+    build: .
+    env_file:
+      - .env
+    environment:
+      NEWTECH_ROOT_FOLDER: /data/payments
+      NEWTECH_OUTPUT_FILE: /data/payments/result.xlsx
+      GOOGLE_CLIENT_SECRET_FILE: /app/secrets/google_client_secret_current.json
+      GOOGLE_TOKEN_FILE: /app/secrets/.google_token.json
+    volumes:
+      - ./data:/data
+      - ./reports:/app/reports
+      - ./secrets:/app/secrets
+    restart: "no"

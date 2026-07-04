@@ -1,0 +1,10 @@
+[Unit]
+Description=Run NewTech payment processor every 4 hours
+
+[Timer]
+OnCalendar=*-*-* 00,04,08,12,16,20:15:00
+Persistent=true
+Unit=newtech-daily.service
+
+[Install]
+WantedBy=timers.target
