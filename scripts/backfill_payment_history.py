@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
@@ -89,7 +89,7 @@ def main() -> int:
 
     config = load_config()
     rules = load_rules()
-    dictionaries = load_dictionaries(prefer_google=True)
+    dictionaries = load_dictionaries(prefer_google=not args.dry_run)
     references = reference_lists_from_dictionaries(dictionaries)
     env = load_env()
     mode = _normalize_mode(args.mode)

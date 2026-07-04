@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import csv
 import hashlib
@@ -136,6 +136,10 @@ def _payment_document_number(file_name: str) -> str:
 def _identity_text(value: str) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().casefold().replace("\u0451", "\u0435"))
 
+
+def _u(value: str) -> str:
+    return value.encode("ascii").decode("unicode_escape")
+
 def parse_payment_history(
     paths: Iterable[Path],
     rules: dict,
@@ -166,11 +170,90 @@ def build_final_history(
         if _should_skip_final_record(record):
             continue
         expanded.extend(_expand_final_record(record))
+    expanded = dedupe_final_records_by_semantic_cash(expanded)
     expanded.sort(key=_record_sort_key)
     for record in expanded:
         record.date = _display_date(record.date)
     return expanded, matched_count
 
+
+
+
+def dedupe_final_records_by_semantic_cash(records: Iterable[PaymentRecord]) -> list[PaymentRecord]:
+    result: list[PaymentRecord] = []
+    positions: dict[tuple[str, ...], int] = {}
+    for record in records:
+        key = _semantic_cash_key(record)
+        if key is None or key not in positions:
+            if key is not None:
+                positions[key] = len(result)
+            result.append(record)
+            continue
+        current_index = positions[key]
+        current = result[current_index]
+        if _semantic_cash_quality(record) > _semantic_cash_quality(current):
+            result[current_index] = record
+    return result
+
+
+def _semantic_cash_key(record: PaymentRecord) -> tuple[str, ...] | None:
+    if _classification_text(record.payment_type) != _u(r"\u043d\u0430\u043b\u0438\u0447\u043d\u0430\u044f"):
+        return None
+    amount = _amount_digits(record.amount)
+    if not amount:
+        return None
+    purpose = _semantic_cash_purpose(record.purpose)
+    if not purpose:
+        return None
+    return (
+        _record_date_key(record.date),
+        _classification_text(record.operation_type),
+        amount,
+        _classification_text(record.object_name),
+        _classification_text(record.project),
+        purpose,
+    )
+
+
+def _semantic_cash_purpose(value: str) -> str:
+    text = _classification_text(value)
+    if not text:
+        return ""
+    designation = _u(r"\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435")
+    if designation in text:
+        text = text.split(designation, 1)[1]
+    conversion_marker = _u(r"\u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u043f\u0441\u043a \u043d\u0430")
+    if conversion_marker in text:
+        text = text.split(conversion_marker, 1)[1]
+    for word in [
+        _u(r"\u043f\u0440\u0438\u0445\u043e\u0434 \u043f\u043e\u0434 \u043e\u0442\u0447\u0435\u0442"),
+        _u(r"\u043f\u0441\u043a \u043d\u044c\u044e\u0442\u0435\u043a"),
+        _u(r"\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+        _u(r"\u043e\u0431\u044a\u0435\u043a\u0442"),
+        _u(r"\u043f\u0440\u043e\u0435\u043a\u0442"),
+        _u(r"\u0441\u0442\u0430\u0442\u044c\u044f"),
+    ]:
+        text = re.sub(rf"(^|\s){re.escape(word)}(\s|$)", " ", text)
+    text = re.sub(r"[,:;]+", " ", text)
+    text = re.sub(r"\s+[\u0430-\u044f\u0451]+[.]\s*[\u0430-\u044f\u0451][.]?$", "", text)
+    words = text.split()
+    collapsed: list[str] = []
+    for word in words:
+        if collapsed and collapsed[-1] == word:
+            continue
+        collapsed.append(word)
+    return " ".join(collapsed)
+
+
+def _semantic_cash_quality(record: PaymentRecord) -> int:
+    score = 0
+    if _classification_text(record.responsible).replace("_", " ") != "new pay":
+        score += 2
+    if _classification_text(record.name).replace("_", " ") != "new pay":
+        score += 1
+    if _u(r"\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435") in _classification_text(record.purpose):
+        score += 1
+    return score
 
 
 

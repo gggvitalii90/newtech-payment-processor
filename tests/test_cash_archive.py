@@ -745,3 +745,53 @@ def test_parse_cash_compact_multiline_expense_with_responsible() -> None:
             "responsible": _ru(r"\u0420\u043e\u0434\u0438\u043d.\u041a"),
         }
     ]
+
+
+
+def test_dedupes_cash_conversion_new_pay_against_signed_message() -> None:
+    messages = [
+        {
+            "timestamp": 1783094400000,
+            "body": {
+                "mid": "mid.new_pay",
+                "text": _ru(
+                    r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f\n"
+                    r"\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a, \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f, \u0420\u0438\u043d\u0430\u0442, \u0420\u0438\u043d\u0430\u0442 \u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u041f\u0421\u041a \u043d\u0430 \u0441\u043f\u0435\u043a\u0442\u043e\u0440 \u0442\u0440\u0435\u0439\u0434 \u0442\u0440\u0430\u043a\u0442\u043e\u0440 \u0441\u0430\u0434\u043e\u0432\u044b\u0439\n"
+                    r"221 400"
+                ),
+            },
+            "sender": {"name": "new_pay"},
+        },
+        {
+            "timestamp": 1783094400000,
+            "body": {
+                "mid": "mid.signed",
+                "text": _ru(
+                    r"\u041f\u0440\u0438\u0445\u043e\u0434 \u043f\u043e\u0434 \u043e\u0442\u0447\u0435\u0442\n"
+                    r"\u041e\u0431\u044a\u0435\u043a\u0442: \u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a\n"
+                    r"\u041f\u0440\u043e\u0435\u043a\u0442: \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f\n"
+                    r"\u0421\u0442\u0430\u0442\u044c\u044f: \u0420\u0438\u043d\u0430\u0442\n"
+                    r"\u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435: \u0420\u0438\u043d\u0430\u0442 \u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u041f\u0421\u041a \u043d\u0430 \u0441\u043f\u0435\u043a\u0442\u043e\u0440 \u0442\u0440\u0435\u0439\u0434 \u0442\u0440\u0430\u043a\u0442\u043e\u0440 \u0441\u0430\u0434\u043e\u0432\u044b\u0439\n"
+                    r"+ 221 400"
+                ),
+            },
+            "sender": {"name": _ru(r"\u041a\u0438\u0440\u0438\u043b\u043b \u041c\u043e\u0447\u0430\u043b\u043e\u0432")},
+        },
+    ]
+    dictionaries = {
+        "unresolved_status": _ru(r"\u041d\u0443\u0436\u043d\u043e \u0440\u0430\u0437\u043e\u0431\u0440\u0430\u0442\u044c"),
+        "objects": {
+            _ru(r"\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a"): [_ru(r"\u043f\u0441\u043a"), _ru(r"\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a")],
+            _ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"): [_ru(r"\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f")],
+        },
+        "projects": {_ru(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"): [_ru(r"\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f")]},
+        "budget_items": {_ru(r"\u0420\u0438\u043d\u0430\u0442"): [_ru(r"\u0440\u0438\u043d\u0430\u0442")]},
+        "responsibles": {_ru(r"\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a"): [_ru(r"\u043a\u0438\u0440\u0438\u043b\u043b \u043c\u043e\u0447\u0430\u043b\u043e\u0432")]},
+        "counterparties": {},
+    }
+
+    records = create_cash_archive_records(messages, "-1", dictionaries)
+
+    assert len(records) == 1
+    assert records[0].max_message_id == "mid.signed"
+    assert records[0].responsible == _ru(r"\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a")

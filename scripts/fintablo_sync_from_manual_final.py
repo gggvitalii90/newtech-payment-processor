@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import csv
@@ -16,6 +16,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from payment_processor.env import load_env
 from payment_processor.fintablo_client import FinTabloClient, load_fintablo_settings
 from payment_processor.google_api import load_google_settings, get_credentials, build_sheets_service
+
+
+def _u(value: str) -> str:
+    return value.encode("ascii").decode("unicode_escape")
 
 
 MONTH_SHEETS = {
@@ -81,6 +85,14 @@ def norm(value: Any) -> str:
 
 def compact_key(value: Any) -> str:
     return re.sub(r"[^0-9a-zа-я]+", "", norm(value))
+
+
+
+PROJECT_DIRECTION_ALIASES = {
+    compact_key(_u("\u0411\u0430\u043d\u043a")): compact_key(_u("\u041e\u0444\u0438\u0441")),
+    compact_key(_u("\u041d\u0430\u043b\u043e\u0433\u0438")): compact_key(_u("\u041e\u0444\u0438\u0441")),
+    compact_key(_u("\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0435 \u0440\u0430\u0441\u0445\u043e\u0434\u044b")): compact_key(_u("\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u043e")),
+}
 
 
 def normalize_date(value: str) -> str:
@@ -170,30 +182,41 @@ def stage_key(value: str) -> str:
 def resolve_ids(row: ManualRow, categories, directions, deals) -> tuple[dict[str, int], list[str]]:
     updates: dict[str, int] = {}
     notes: list[str] = []
-    category = categories.get(compact_key(row.values.get("Статья бюджета", "")))
+    budget_key = _u("\u0421\u0442\u0430\u0442\u044c\u044f \u0431\u044e\u0434\u0436\u0435\u0442\u0430")
+    project_key_name = _u("\u041f\u0440\u043e\u0435\u043a\u0442")
+    object_key_name = _u("\u041e\u0431\u044a\u0435\u043a\u0442")
+
+    category = categories.get(compact_key(row.values.get(budget_key, "")))
     if category:
         updates["categoryId"] = int(category["id"])
-    elif row.values.get("Статья бюджета", "").strip():
+    elif row.values.get(budget_key, "").strip():
         notes.append("category_not_found")
 
-    direction = directions.get(compact_key(row.values.get("Проект", "")))
+    project_key = compact_key(row.values.get(project_key_name, ""))
+    direction = directions.get(PROJECT_DIRECTION_ALIASES.get(project_key, project_key))
     if direction:
         updates["directionId"] = int(direction["id"])
-    elif row.values.get("Проект", "").strip():
+    elif row.values.get(project_key_name, "").strip():
         notes.append("direction_not_found")
 
-    deal = deals.get(compact_key(row.values.get("Объект", "")))
+    deal = deals.get(compact_key(row.values.get(object_key_name, "")))
     if deal:
-        project_stage = stage_key(row.values.get("Проект", ""))
-        stage_id = None
-        for stage in deal.get("stages") or []:
-            if stage_key(stage.get("name", "")) == project_stage:
-                stage_id = int(stage["id"])
-                break
-        updates["dealId"] = stage_id or int(deal["id"])
-        if not stage_id and row.values.get("Проект", "").strip():
-            notes.append("stage_not_found_used_deal")
-    elif row.values.get("Объект", "").strip():
+        if row.operation_group == "income":
+            updates["dealId"] = int(deal["id"])
+        else:
+            project_stage = stage_key(row.values.get(project_key_name, ""))
+            stage_id = None
+            for stage in deal.get("stages") or []:
+                if stage_key(stage.get("name", "")) == project_stage:
+                    stage_id = int(stage["id"])
+                    break
+            if stage_id:
+                updates["dealId"] = stage_id
+            elif row.values.get(project_key_name, "").strip():
+                notes.append("stage_not_found_skipped_deal")
+            else:
+                updates["dealId"] = int(deal["id"])
+    elif row.values.get(object_key_name, "").strip():
         notes.append("deal_not_found")
     return updates, notes
 

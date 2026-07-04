@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date
 from pathlib import Path
 
 from payment_processor.invoice_archive import InvoiceArchiveRecord
@@ -488,3 +488,46 @@ def test_build_final_history_replaces_fintablo_unallocated_category_from_invoice
     assert final[0].budget_item == u("\\u0422\\u0435\\u0445\\u043d\\u0438\\u043a\\u0430")
     assert final[0].object_name == u("\\u041f\\u0421\\u041a \\u041d\\u044c\\u044e\\u0442\\u0435\\u043a")
     assert final[0].invoice_link == "https://drive/invoice"
+
+
+
+def test_build_final_history_dedupes_semantic_cash_conversion_messages() -> None:
+    new_pay = PaymentRecord(
+        "mid.newpay",
+        "2026-07-03",
+        "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f",
+        "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f",
+        "",
+        "",
+        "",
+        "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f",
+        "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f",
+        "",
+        "new_pay",
+        "\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a, \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f, \u0420\u0438\u043d\u0430\u0442, \u0420\u0438\u043d\u0430\u0442 \u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u041f\u0421\u041a \u043d\u0430 \u0441\u043f\u0435\u043a\u0442\u043e\u0440 \u0442\u0440\u0435\u0439\u0434 \u0442\u0440\u0430\u043a\u0442\u043e\u0440 \u0441\u0430\u0434\u043e\u0432\u044b\u0439, \u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a",
+        "",
+        "221400",
+    )
+    signed = PaymentRecord(
+        "mid.signed",
+        "2026-07-03",
+        "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f",
+        "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f",
+        "",
+        "",
+        "",
+        "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f",
+        "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f",
+        "",
+        "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a",
+        "\u041f\u0440\u0438\u0445\u043e\u0434 \u043f\u043e\u0434 \u043e\u0442\u0447\u0435\u0442, \u041e\u0431\u044a\u0435\u043a\u0442: \u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a, \u041f\u0440\u043e\u0435\u043a\u0442: \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f, \u0421\u0442\u0430\u0442\u044c\u044f: \u0420\u0438\u043d\u0430\u0442, \u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435: \u0420\u0438\u043d\u0430\u0442 \u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u041f\u0421\u041a \u043d\u0430 \u0441\u043f\u0435\u043a\u0442\u043e\u0440 \u0442\u0440\u0435\u0439\u0434 \u0442\u0440\u0430\u043a\u0442\u043e\u0440 \u0441\u0430\u0434\u043e\u0432\u044b\u0439",
+        "",
+        "+ 221 400",
+    )
+
+    final, _ = build_final_history([], [], [new_pay, signed], [])
+
+    assert len(final) == 1
+    assert final[0].name == "mid.signed"
+    assert final[0].responsible == "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a"
+    assert final[0].date == "03.07.2026"

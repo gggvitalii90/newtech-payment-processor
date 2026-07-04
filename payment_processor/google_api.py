@@ -20,7 +20,7 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets",
 ]
-GOOGLE_OAUTH_PORT = 0
+GOOGLE_OAUTH_PORT = 8080
 DEFAULT_GOOGLE_TOKEN_PATH = APP_DIR / ".google_token.json"
 
 
@@ -69,7 +69,11 @@ def get_credentials(settings: GoogleSettings, scopes: list[str] | None = None) -
     if not settings.client_secret_file.exists():
         raise GoogleConfigError(f"Файл OAuth client secret не найден: {settings.client_secret_file}")
     flow = InstalledAppFlow.from_client_secrets_file(str(settings.client_secret_file), scopes)
-    credentials = flow.run_local_server(port=GOOGLE_OAUTH_PORT)
+    credentials = flow.run_local_server(
+        port=GOOGLE_OAUTH_PORT,
+        prompt="consent select_account",
+        access_type="offline",
+    )
     _save_credentials(settings.token_file, credentials)
     return credentials
 

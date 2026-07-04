@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -33,7 +34,14 @@ class BackfillState:
             json.dumps({"version": 1, "days": self.days}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        temporary.replace(self.path)
+        for attempt in range(5):
+            try:
+                temporary.replace(self.path)
+                return
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
 
 
 def run_resumable_days(

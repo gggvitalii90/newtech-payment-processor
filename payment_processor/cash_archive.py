@@ -122,7 +122,80 @@ def create_cash_archive_records(
                     source_text=text,
                 )
             )
-    return records
+    return dedupe_cash_archive_records(records)
+
+
+def dedupe_cash_archive_records(records: list[CashArchiveRecord]) -> list[CashArchiveRecord]:
+    result: list[CashArchiveRecord] = []
+    positions: dict[tuple[str, ...], int] = {}
+    for record in records:
+        key = cash_record_dedupe_key(record)
+        if key is None or key not in positions:
+            if key is not None:
+                positions[key] = len(result)
+            result.append(record)
+            continue
+        current_index = positions[key]
+        current = result[current_index]
+        if cash_record_quality(record) > cash_record_quality(current):
+            result[current_index] = record
+    return result
+
+
+def cash_record_dedupe_key(record: CashArchiveRecord) -> tuple[str, ...] | None:
+    if not record.amount:
+        return None
+    purpose_key = cash_purpose_dedupe_key(record.purpose)
+    if not purpose_key:
+        return None
+    return (
+        record.max_date,
+        _norm(record.operation_type),
+        _norm(record.payment_type),
+        record.amount.strip().lstrip("+"),
+        _norm(record.object_name),
+        _norm(record.project),
+        purpose_key,
+    )
+
+
+def cash_purpose_dedupe_key(value: str) -> str:
+    text = _norm(value)
+    if not text:
+        return ""
+    designation = _u(r"\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435")
+    if designation in text:
+        text = text.split(designation, 1)[1]
+    conversion_marker = _u(r"\u043e\u043f\u043b\u0430\u0442\u0430 \u0441 \u043f\u0441\u043a \u043d\u0430")
+    if conversion_marker in text:
+        text = text.split(conversion_marker, 1)[1]
+    for word in [
+        _u(r"\u043f\u0440\u0438\u0445\u043e\u0434 \u043f\u043e\u0434 \u043e\u0442\u0447\u0435\u0442"),
+        _u(r"\u043f\u0441\u043a \u043d\u044c\u044e\u0442\u0435\u043a"),
+        _u(r"\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"),
+        _u(r"\u043e\u0431\u044a\u0435\u043a\u0442"),
+        _u(r"\u043f\u0440\u043e\u0435\u043a\u0442"),
+        _u(r"\u0441\u0442\u0430\u0442\u044c\u044f"),
+    ]:
+        text = re.sub(rf"(^|\s){re.escape(_norm(word))}(\s|$)", " ", text)
+    words = text.split()
+    collapsed: list[str] = []
+    for word in words:
+        if collapsed and collapsed[-1] == word:
+            continue
+        collapsed.append(word)
+    return " ".join(collapsed)
+
+
+def cash_record_quality(record: CashArchiveRecord) -> int:
+    score = 0
+    if _norm(record.responsible).replace("_", " ") != "new pay":
+        score += 2
+    if _norm(record.author).replace("_", " ") != "new pay":
+        score += 1
+    if _u(r"\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435") in _norm(record.purpose):
+        score += 1
+    return score
 
 
 def default_cash_responsible(author: str, dictionaries: dict[str, Any]) -> str:

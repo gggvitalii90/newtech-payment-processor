@@ -84,7 +84,7 @@ def main() -> None:
     env = load_env()
     config = load_config()
     rules = load_rules()
-    dictionaries = load_dictionaries(prefer_google=True)
+    dictionaries = load_dictionaries(prefer_google=not args.local_only)
     references = reference_lists_from_dictionaries(dictionaries)
 
     root = Path(config["root_folder"])
