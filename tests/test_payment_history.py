@@ -576,3 +576,15 @@ def test_final_history_normalizes_reference_values_from_july_review() -> None:
     assert by_name["ai.pdf"].budget_item == "\u041f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a"
     assert by_name["app.pdf"].budget_item == "\u041f\u0440\u043e\u0433\u0440\u0430\u043c\u043d\u043e\u0435 \u043e\u0431\u0435\u0441\u043f\u0435\u0447\u0435\u043d\u0438\u0435"
     assert by_name["salary.pdf"].budget_item == "\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430"
+
+
+def test_final_history_fills_auto_household_personal_auto_repair_from_purpose() -> None:
+    row = PaymentRecord(
+        "makarova.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u0411\u0435\u0437\u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435 \u0431\u0435\u0437 \u041d\u0414\u0421", "\u0431/\u043d \u0418\u041f \u041c\u043e\u0447\u0430\u043b\u043e\u0432",
+        "\u0418\u041f \u041c\u0430\u043a\u0430\u0440\u043e\u0432\u0430 \u0410\u043b\u043b\u0430 \u041c\u0438\u0445\u0430\u0439\u043b\u043e\u0432\u043d\u0430", "17", "\u0410\u0432\u0442\u043e\u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u043e", "", "", "\u041c\u0438\u0440\u043e\u043d\u043e\u0432\u0430 \u042e.", "\u0417\u0430\u043f\u0447\u0430\u0441\u0442\u0438", "", "23100",
+    )
+
+    final, _ = build_final_history([row], [], [], [])
+
+    assert final[0].project == "\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e"
+    assert final[0].budget_item == "\u0420\u0435\u043c\u043e\u043d\u0442/\u0422\u041e"

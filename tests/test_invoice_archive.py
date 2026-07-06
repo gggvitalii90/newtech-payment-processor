@@ -1443,3 +1443,19 @@ def test_enrich_payments_uses_archive_purpose_for_technical_bank_purpose():
 
     assert matched == 1
     assert payment.purpose == "\u043f\u0435\u043d\u0438 \u0445\u0430\u0432\u0430\u043b \u0434\u0436\u0443\u043b\u0438\u043e\u043d \u0438\u044e\u043d\u044c"
+
+
+def test_normalize_signature_moves_auto_household_personal_auto_to_project_and_repair_budget() -> None:
+    result = invoice_archive.normalize_signature_rules(
+        {
+            "object_name": "\u041f\u0421\u041a",
+            "project": "\u0410\u0432\u0442\u043e\u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u043e",
+            "budget_item": "\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e",
+            "purpose": "\u0430\u0432\u0442\u043e\u0437\u0430\u043f\u0447\u0430\u0441\u0442\u0438",
+        },
+        load_dictionaries(),
+    )
+
+    assert result["object_name"] == "\u0410\u0432\u0442\u043e\u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u043e"
+    assert result["project"] == "\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e"
+    assert result["budget_item"] == "\u0420\u0435\u043c\u043e\u043d\u0442/\u0422\u041e"

@@ -1529,6 +1529,8 @@ def normalize_signature_rules(signature: dict[str, str], dictionaries: dict[str,
     purpose = result.get("purpose", "")
     project_key = _normalize_archive_key(project)
     object_key = _normalize_archive_key(object_name)
+    budget_key = _normalize_archive_key(budget_item)
+    purpose_key = _normalize_archive_key(purpose)
 
     def append_purpose(value: str) -> None:
         current = result.get("purpose", "").strip()
@@ -1555,7 +1557,14 @@ def normalize_signature_rules(signature: dict[str, str], dictionaries: dict[str,
     }
     if archive_rules and project_key == "автохозяйство":
         result["object_name"] = "Автохозяйство"
-        result["project"] = ""
+        if budget_key in {"личные авто", "легковые авто"}:
+            result["project"] = "Личные авто"
+            if "запчас" in purpose_key or "ремонт" in purpose_key:
+                result["budget_item"] = "Ремонт/ТО"
+            else:
+                result["budget_item"] = ""
+        else:
+            result["project"] = ""
     elif archive_rules and project_key in project_to_budget:
         result["project"], result["budget_item"] = project_to_budget[project_key]
     elif archive_rules and project_key == "сро":

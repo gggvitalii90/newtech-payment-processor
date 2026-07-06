@@ -479,6 +479,15 @@ def _apply_reference_cleanup(record: PaymentRecord) -> None:
     if project in {"\u043a\u043c \u043c\u043e\u043d\u0442", "\u043a\u043c \u043c\u043e\u043d\u0442\u0430\u0436", "\u043a\u043c(\u043c)", "\u043a\u043c (\u043c)"}:
         record.project = "\u041a\u041c ( \u041c )"
 
+    if (
+        _classification_text(record.object_name) == "\u0430\u0432\u0442\u043e\u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u043e"
+        and not record.project.strip()
+        and not record.budget_item.strip()
+        and "\u0437\u0430\u043f\u0447\u0430\u0441" in purpose
+    ):
+        record.project = "\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e"
+        record.budget_item = "\u0420\u0435\u043c\u043e\u043d\u0442/\u0422\u041e"
+
     if budget in {"\u0432\u0438\u0434\u0435\u043e\u0433\u0440\u0430\u0444", "\u0432\u0438\u0434\u0435\u043e"}:
         record.budget_item = "\u0412\u0438\u0434\u0435\u043e \u043f\u0440\u043e\u0434\u0430\u043a\u0448\u043d"
     elif budget in {"ai \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044f", "\u0430\u0439 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044f"}:
