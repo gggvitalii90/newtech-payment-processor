@@ -715,6 +715,22 @@ def _amount_decimal(value: str) -> Decimal:
     return Decimal(normalized)
 
 
+def _invoice_numbers_compatible(payment_invoice: str, archive_invoice: str) -> bool:
+    payment_key = _normalize_invoice_number(payment_invoice)
+    archive_key = _normalize_invoice_number(archive_invoice)
+    if not payment_key or not archive_key:
+        return False
+    if payment_key == archive_key:
+        return True
+    if len(payment_key) < 4 or len(archive_key) < 4:
+        return False
+    for short, long in ((payment_key, archive_key), (archive_key, payment_key)):
+        suffix = long[len(short):len(short) + 1]
+        if long.startswith(short) and suffix in {":", "/", "-", "_"}:
+            return True
+    return False
+
+
 def enrich_payment_records_from_archive(
     payments: list[PaymentRecord],
     archive_records: list[InvoiceArchiveRecord],
@@ -755,6 +771,15 @@ def enrich_payment_records_from_archive(
                 for field in ("object_name", "project", "responsible")
             ):
                 archive = invoice_candidates[0]
+
+        if archive is None and invoice_number and not _is_missing_invoice_number(invoice_number):
+            suffix_candidates = [
+                item for item in archive_records
+                if _invoice_numbers_compatible(payment.invoice_number, item.invoice_number)
+                and _payment_matches_record(payment, item)
+                and _payment_amount_matches_record(payment, item)
+            ]
+            archive = _select_best_archive_candidate(suffix_candidates)
 
         if archive is None and counterparty and _is_missing_invoice_number(invoice_number):
             counterparty_candidates = archive_by_counterparty.get(counterparty, [])

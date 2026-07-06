@@ -531,3 +531,48 @@ def test_build_final_history_dedupes_semantic_cash_conversion_messages() -> None
     assert final[0].name == "mid.signed"
     assert final[0].responsible == "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a"
     assert final[0].date == "03.07.2026"
+
+
+def test_enrich_payment_records_matches_invoice_number_with_suffix_by_amount() -> None:
+    row = PaymentRecord(
+        "payment.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u0411\u0435\u0437\u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435 \u0441 \u041d\u0414\u0421", "\u0431/\u043d \u0418\u041f \u041c\u043e\u0447\u0430\u043b\u043e\u0432",
+        "\u041e\u041e\u041e \"\u0410\u0412\u0422\u041e\u0414\u041e\u041a-\u0421\u0415\u0422\u042c\"", "SP-70013", "", "", "", "", "\u0417\u0430\u043f\u0447\u0430\u0441\u0442\u0438", "", "17807",
+    )
+    source = InvoiceArchiveRecord(
+        "2026-07-03 18:11:32", "\u041f\u0421\u041a", "-1", "", "ACC_SP-70013_100_20260703.xls", "xls", "\u0420\u0430\u0441\u0445\u043e\u0434",
+        "\u0411\u0435\u0437\u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435 \u0441 \u041d\u0414\u0421", "", "\u041e\u041e\u041e \"\u0410\u0412\u0422\u041e\u0414\u041e\u041a-\u0421\u0415\u0422\u042c\"", "SP-70013: 100", "2026-07-03",
+        "\u0410\u0432\u0442\u043e\u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u043e", "\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e", "\u0420\u0435\u043c\u043e\u043d\u0442/\u0422\u041e", "\u041c\u0438\u0440\u043e\u043d\u043e\u0432\u0430 \u042e.", "\u0417\u0430\u043f\u0447\u0430\u0441\u0442\u0438", "17807", "\u041d\u043e\u0432\u044b\u0439",
+        "https://drive/invoice", "mid", "file", "\u041e\u041a",
+    )
+
+    from payment_processor.invoice_archive import enrich_payment_records_from_archive
+
+    assert enrich_payment_records_from_archive([row], [source]) == 1
+    assert row.invoice_link == "https://drive/invoice"
+    assert row.project == "\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e"
+    assert row.budget_item == "\u0420\u0435\u043c\u043e\u043d\u0442/\u0422\u041e"
+
+
+def test_unmatched_invoice_issues_ignores_known_ppr_without_invoice() -> None:
+    row = payment("ppr.pdf", counterparty='\u041e\u041e\u041e "\u041f\u041f\u0420"', invoice="77600100024090422")
+
+    assert unmatched_invoice_issues([row], []) == []
+
+
+def test_final_history_normalizes_reference_values_from_july_review() -> None:
+    rows = [
+        PaymentRecord("km.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f", "", "", "", "\u041a\u0440\u0430\u0441\u043d\u043e\u0435 \u0417\u043d\u0430\u043c\u044f", "\u043a\u043c \u043c\u043e\u043d\u0442", "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430", "\u0420\u043e\u0434\u0438\u043d.\u041a", "\u0433\u0440\u0443\u0437\u043e\u0432\u0438\u043a\u043e\u0432", "", "4760"),
+        PaymentRecord("video.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f", "", "", "", "\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a", "\u041c\u0430\u0440\u043a\u0435\u0442\u0438\u043d\u0433", "\u0412\u0438\u0434\u0435\u043e\u0433\u0440\u0430\u0444", "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a", "\u0412\u0438\u0434\u0435\u043e", "", "1000"),
+        PaymentRecord("ai.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f", "", "", "", "\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a", "\u041e\u0444\u0438\u0441", "Ai \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044f", "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a", "\u0410\u0432\u0430\u043d\u0441 \u043f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a", "", "2000"),
+        PaymentRecord("app.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f", "", "", "", "\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a", "\u041e\u0444\u0438\u0441", "\u041f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435", "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a", "\u0420\u0443\u0441\u043f\u0440\u043e\u0444\u0430\u0439\u043b", "", "3000"),
+        PaymentRecord("salary.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f", "", "", "", "\u041f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u043e", "\u0424\u041e\u0422", "\u0420\u0430\u0431\u043e\u0447\u0438\u0435 (\u043e\u043a\u043b\u0430\u0434)", "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a", "\u0417\u043f \u043e\u0441\u0442\u0430\u0442\u043e\u043a", "", "4000"),
+    ]
+
+    final, _ = build_final_history([], [], rows, [])
+    by_name = {record.name: record for record in final}
+
+    assert by_name["km.pdf"].project == "\u041a\u041c ( \u041c )"
+    assert by_name["video.pdf"].budget_item == "\u0412\u0438\u0434\u0435\u043e \u043f\u0440\u043e\u0434\u0430\u043a\u0448\u043d"
+    assert by_name["ai.pdf"].budget_item == "\u041f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a"
+    assert by_name["app.pdf"].budget_item == "\u041f\u0440\u043e\u0433\u0440\u0430\u043c\u043d\u043e\u0435 \u043e\u0431\u0435\u0441\u043f\u0435\u0447\u0435\u043d\u0438\u0435"
+    assert by_name["salary.pdf"].budget_item == "\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430"

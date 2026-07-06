@@ -412,6 +412,7 @@ def _apply_final_classification_fallbacks(record: PaymentRecord) -> None:
         record.budget_item = record.budget_item or "\u0421\u0420\u041e"
         record.responsible = record.responsible or "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a"
 
+    _apply_reference_cleanup(record)
     _apply_tax_and_salary_cleanup(record)
     _apply_unmatched_context_fallbacks(record)
     _apply_april_13_learned_patterns(record)
@@ -468,6 +469,24 @@ def _apply_cash_fot_cleanup(record: PaymentRecord) -> None:
     elif budget in move_to_purpose:
         record.budget_item = ""
         _append_purpose_detail(record, move_to_purpose[budget])
+
+
+def _apply_reference_cleanup(record: PaymentRecord) -> None:
+    project = _classification_text(record.project)
+    budget = _classification_text(record.budget_item)
+    purpose = _classification_text(record.purpose)
+
+    if project in {"\u043a\u043c \u043c\u043e\u043d\u0442", "\u043a\u043c \u043c\u043e\u043d\u0442\u0430\u0436", "\u043a\u043c(\u043c)", "\u043a\u043c (\u043c)"}:
+        record.project = "\u041a\u041c ( \u041c )"
+
+    if budget in {"\u0432\u0438\u0434\u0435\u043e\u0433\u0440\u0430\u0444", "\u0432\u0438\u0434\u0435\u043e"}:
+        record.budget_item = "\u0412\u0438\u0434\u0435\u043e \u043f\u0440\u043e\u0434\u0430\u043a\u0448\u043d"
+    elif budget in {"ai \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044f", "\u0430\u0439 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044f"}:
+        record.budget_item = "\u041f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a" if "\u043f\u043e\u0434\u0440\u044f\u0434\u0447" in purpose else "\u041f\u0440\u043e\u0433\u0440\u0430\u043c\u043d\u043e\u0435 \u043e\u0431\u0435\u0441\u043f\u0435\u0447\u0435\u043d\u0438\u0435"
+    elif budget in {"\u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435", "\u0440\u0443\u0441\u043f\u0440\u043e\u0444\u0430\u0439\u043b"} or "\u0440\u0443\u0441\u043f\u0440\u043e\u0444\u0430\u0439\u043b" in purpose:
+        record.budget_item = "\u041f\u0440\u043e\u0433\u0440\u0430\u043c\u043d\u043e\u0435 \u043e\u0431\u0435\u0441\u043f\u0435\u0447\u0435\u043d\u0438\u0435"
+    elif budget in {"\u0440\u0430\u0431\u043e\u0447\u0438\u0435 (\u043e\u043a\u043b\u0430\u0434)", "\u0440\u0430\u0431\u043e\u0447\u0438\u0435 \u043e\u043a\u043b\u0430\u0434", "\u043e\u043a\u043b\u0430\u0434"}:
+        record.budget_item = "\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430"
 
 
 def _apply_tax_and_salary_cleanup(record: PaymentRecord) -> None:
@@ -866,6 +885,8 @@ def unmatched_invoice_issues(
     invoices = list(invoice_records)
     issues: list[HistoryIssue] = []
     for record in payment_records:
+        if _is_expected_invoice_link_missing(record):
+            continue
         candidate = replace(record)
         if enrich_payment_records_from_archive([candidate], invoices) == 0:
             issues.append(
@@ -876,6 +897,17 @@ def unmatched_invoice_issues(
                 )
             )
     return issues
+
+
+def _is_expected_invoice_link_missing(record: PaymentRecord) -> bool:
+    counterparty = _classification_text(record.counterparty)
+    invoice = _classification_text(record.invoice_number)
+    purpose = _classification_text(record.purpose)
+    if "\u043f\u043f\u0440" in counterparty and invoice == "77600100024090422":
+        return True
+    if "\u043f\u043f\u0440" in counterparty and "\u043f\u043f\u0440" in purpose:
+        return True
+    return False
 
 
 def write_payment_records_csv(path: Path, records: Iterable[PaymentRecord]) -> None:
