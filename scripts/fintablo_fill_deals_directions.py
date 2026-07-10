@@ -257,14 +257,15 @@ def payload_from_manual(
         if not is_income:
             target_stage = stage_key(project)
             stage_id = None
-            for stage in deal.get("stages") or []:
+            stages = deal.get("stages") or []
+            for stage in stages:
                 if stage_key(str(stage.get("name") or "")) == target_stage:
                     stage_id = int(stage["id"])
                     break
             if stage_id:
                 target_deal_id = stage_id
-            elif project.strip():
-                notes.append("stage_not_found_skipped_deal")
+            elif stages:
+                notes.append("stage_not_found_skipped_deal" if project.strip() else "stage_required_skipped_deal")
                 return payload, notes
         else:
             # FinTablo accepts income on the base deal, not on a deal stage.

@@ -210,13 +210,13 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
         key = cash_key_from_record(record)
         if key in existing_cash:
             continue
-        result.cash_missing += 1
+        cash_amount = amount(record.amount)
         line = manual_line_from_record(record)
         group = operation_group(record)
         fake_tx = {"group": group}
         payload_ids, notes = payload_from_manual(line, fake_tx, directions, deals, categories, category_by_id, stage_ids)
         payload = {
-            "value": float(amount(record.amount)),
+            "value": float(cash_amount),
             "moneybagId": cash_account_id,
             "group": group,
             "description": record.purpose,
@@ -225,13 +225,20 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
         }
         action = "create"
         error = ""
-        if not cash_account_id:
+        if cash_amount <= 0:
+            action = "skip_zero_amount"
+            result.cash_skipped += 1
+        elif not cash_account_id:
+            result.cash_missing += 1
             action = "skip_no_cash_moneybag"
             result.cash_skipped += 1
         elif group == "transfer":
             action = "skip_cash_transfer"
+            result.cash_missing += 1
             result.cash_skipped += 1
-        elif apply:
+        else:
+            result.cash_missing += 1
+        if action == "create" and apply:
             try:
                 client.request_json("POST", "/v1/transaction", payload=payload)
                 result.cash_created += 1
