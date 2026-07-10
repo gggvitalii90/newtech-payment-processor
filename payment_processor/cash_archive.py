@@ -611,12 +611,18 @@ def normalize_cash_signature_rules(signature: dict[str, str], dictionaries: dict
 
 def extract_cash_amount(text: str) -> str:
     matches = re.findall(r"([+-])\s*([\d\s]+(?:[,.]\d{1,2})?)\s*(?:р\.?|руб\.?)?", text, re.IGNORECASE)
-    if not matches:
-        return ""
-    sign, value = matches[-1]
-    cleaned = re.sub(r"\s+", "", value).replace(".", ",")
-    return f"{sign}{cleaned}" if sign == "+" else cleaned
-
+    if matches:
+        sign, value = matches[-1]
+        cleaned = re.sub(r"\s+", "", value).replace(".", ",")
+        return f"{sign}{cleaned}" if sign == "+" else cleaned
+    nal_matches = re.findall(
+        r"\bнал(?:ичными|ичные)?\.?\s*[:\-]?\s*([1-9]\d{0,2}(?:[ \u00a0]\d{3})+(?:[,.]\d{1,2})?|[1-9]\d{3,}(?:[,.]\d{1,2})?)\s*(?:р\.?|руб\.?)?",
+        text,
+        re.IGNORECASE,
+    )
+    if nal_matches:
+        return re.sub(r"[ \u00a0]+", "", nal_matches[-1]).replace(".", ",")
+    return ""
 
 def extract_unsigned_cash_amount(text: str) -> str:
     matches = re.findall(r"(?<![\d+-])([1-9]\d{0,2}(?:[ \u00a0]\d{3})+(?:[,.]\d{1,2})?|[1-9]\d{3,}(?:[,.]\d{1,2})?)", text, re.IGNORECASE)

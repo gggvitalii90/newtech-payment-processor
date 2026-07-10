@@ -89,6 +89,25 @@ def test_parse_cash_splits_structured_multiple_expenses_in_one_message() -> None
         },
     ]
 
+def test_parse_cash_structured_expense_accepts_nal_amount_marker() -> None:
+    entries = parse_cash_message_entries(
+        _ru(
+            r"\u0420\u0430\u0441\u0445\u043e\u0434\n\n"
+            r"\u041e\u0431\u044a\u0435\u043a\u0442: \u043a\u0440\u0430\u0441\u043d\u043e\u0435 \u0437\u043d\u0430\u043c\u044f\n"
+            r"\u041f\u0440\u043e\u0435\u043a\u0442: \u043a\u043c \u043c\u043e\u043d\u0442\u0430\u0436\n"
+            r"\u0421\u0442\u0430\u0442\u044c\u044f:\u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0430\n"
+            r"\u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435: \u0433\u0440\u0443\u0437\u043e\u0432\u0438\u0447\u043a\u043e\u0432\n"
+            r"\u041d\u0430\u043b 4810 \u0440.\n\n"
+            r"\u0420\u0430\u0441\u0445\u043e\u0434\n\n"
+            r"\u041e\u0431\u044a\u0435\u043a\u0442: \u043a\u0440\u0430\u0441\u043d\u043e\u0435 \u0437\u043d\u0430\u043c\u044f\n"
+            r"\u041f\u0440\u043e\u0435\u043a\u0442: \u043a\u043c \u043c\u043e\u043d\u0442\u0430\u0436\n"
+            r"\u0421\u0442\u0430\u0442\u044c\u044f:\u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0430\n"
+            r"\u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435: \u0433\u0440\u0443\u0437\u043e\u0432\u0438\u0447\u043a\u043e\u0432\n"
+            r"\u041d\u0430\u043b 8 700 \u0440."
+        )
+    )
+
+    assert [entry["amount"] for entry in entries] == ["4810", "8700"]
 
 def test_parse_cash_keeps_accountable_income() -> None:
     parsed = parse_cash_message("Приход + 10 000 под отчет")
