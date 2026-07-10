@@ -5,7 +5,7 @@ import csv
 import json
 import subprocess
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +47,14 @@ def build_period_commands(start: date, end: date, staging_root: Path, dry_run: b
         if dry_run:
             command.append("--dry-run")
         commands.append(command)
+    fintablo_command = [
+        sys.executable, "scripts/fintablo_sync_daily.py",
+        "--start", start_text, "--end", end_text,
+        "--output", f"reports/fintablo_daily_sync_{start_text}_{end_text}.csv",
+    ]
+    if not dry_run:
+        fintablo_command.append("--apply")
+    commands.append(fintablo_command)
     return commands
 
 
@@ -151,9 +159,26 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     start, end = _selected_period(args)
-    report = {"start_date": start.isoformat(), "end_date": end.isoformat(), "dry_run": args.dry_run, "payment_source": args.payment_source, "steps": []}
     exit_code = 0
-    for command in build_period_commands(start, end, Path(args.staging_root), args.dry_run, args.payment_source):
+    current = start
+    while current <= end:
+        day_code = _run_one_day(current, args)
+        if day_code and not exit_code:
+            exit_code = day_code
+        current += timedelta(days=1)
+    return exit_code
+
+
+def _run_one_day(day: date, args: argparse.Namespace) -> int:
+    report = {
+        "start_date": day.isoformat(),
+        "end_date": day.isoformat(),
+        "dry_run": args.dry_run,
+        "payment_source": args.payment_source,
+        "steps": [],
+    }
+    exit_code = 0
+    for command in build_daily_commands(day, Path(args.staging_root), args.dry_run, args.payment_source):
         result = subprocess.run(
             command,
             cwd=ROOT,
@@ -176,9 +201,9 @@ def main() -> int:
         if args.dry_run:
             report["status"] = "dry_run_ok"
         else:
-            report["drive_lifecycle"] = finalize_drive(end)
+            report["drive_lifecycle"] = finalize_drive(day)
             report["status"] = "ok"
-    _write_report(start, end, report)
+    _write_report(day, day, report)
     if not args.no_telegram:
         _send_telegram_report(report)
     return exit_code

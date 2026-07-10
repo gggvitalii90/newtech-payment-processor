@@ -18,6 +18,7 @@ def test_daily_commands_update_both_invoice_archives_before_payment_sheets():
         "scripts/backfill_max_archive.py",
         "scripts/backfill_payment_history.py",
         "scripts/backfill_payment_history.py",
+        "scripts/fintablo_sync_daily.py",
     ]
     assert commands[0][-1] == "\u041f\u0421\u041a"
     assert commands[1][-1] == "\u0418\u0421"
@@ -39,7 +40,18 @@ def test_daily_dry_run_uses_local_invoice_build_and_does_not_write_sheets():
     assert "--local-only" in commands[1]
     assert "--dry-run" in commands[2]
     assert "--dry-run" in commands[3]
+    assert "--apply" not in commands[4]
 
+
+def test_daily_live_run_applies_fintablo_sync_after_google_update():
+    commands = build_daily_commands(date(2026, 7, 10), Path("stage"), dry_run=False)
+
+    command = commands[-1]
+
+    assert command[1] == "scripts/fintablo_sync_daily.py"
+    assert command[command.index("--start") + 1] == "2026-07-10"
+    assert command[command.index("--end") + 1] == "2026-07-10"
+    assert "--apply" in command
 
 
 def test_finalization_requires_same_invoice_link_and_payment_date():
@@ -58,6 +70,26 @@ def test_finalization_requires_same_invoice_link_and_payment_date():
 
 def test_daily_commands_can_use_fintablo_payment_source():
     commands = build_daily_commands(date(2026, 7, 2), Path("stage"), dry_run=False, payment_source="fintablo")
-    payment_commands = commands[2:]
+    payment_commands = commands[2:4]
     for command in payment_commands:
         assert command[command.index("--payment-source") + 1] == "fintablo"
+
+
+def test_main_runs_period_as_separate_daily_reports(monkeypatch):
+    import scripts.run_daily_update as daily
+
+    class Args:
+        date = ""
+        start = "2026-07-06"
+        end = "2026-07-07"
+        staging_root = "stage"
+        dry_run = True
+        no_telegram = True
+        payment_source = "max"
+
+    calls = []
+    monkeypatch.setattr(daily, "parse_args", lambda: Args())
+    monkeypatch.setattr(daily, "_run_one_day", lambda day, args: calls.append(day.isoformat()) or 0)
+
+    assert daily.main() == 0
+    assert calls == ["2026-07-06", "2026-07-07"]

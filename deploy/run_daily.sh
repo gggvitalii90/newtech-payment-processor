@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/newtech-payment-processor}"
 PAYMENT_SOURCE="${PAYMENT_SOURCE:-max}"
-STAGING_ROOT="${STAGING_ROOT:-/data/payment-history}"
+STAGING_ROOT="${STAGING_ROOT:-/data}"
 START_DATE="${START_DATE:-$(date -d 'yesterday' +%F)}"
 END_DATE="${END_DATE:-$(date +%F)}"
 DRY_RUN_ARGS=()

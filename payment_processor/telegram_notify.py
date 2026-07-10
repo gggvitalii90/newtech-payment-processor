@@ -26,6 +26,7 @@ WARN = _u(r"\u26a0\ufe0f")
 GREEN = _u(r"\U0001f7e2")
 LINK = _u(r"\U0001f517")
 CLOCK = _u(r"\U0001f558")
+RECEIPT = _u(r"\U0001f9fe")
 
 
 def google_spreadsheet_link(spreadsheet_id: str) -> str:
@@ -47,13 +48,14 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
 
     max_summary = _sum_key_value_stdout(_steps_for_script(report, "backfill_max_archive.py"))
     payment_summary = _sum_json_stdout(_steps_for_script(report, "backfill_payment_history.py"))
+    fintablo_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_sync_daily.py"))
     issues = _sum_issues(payment_summary)
     drive = report.get("drive_lifecycle") or {}
 
     lines = [
         title,
         "",
-        f"{CAL} " + _u(r"\u041f\u0435\u0440\u0438\u043e\u0434") + f": {_format_period(report)}",
+        f"{CAL} {_format_period_label(report)}",
         f"{BUILDING} " + _u(r"\u041f\u043e\u0442\u043e\u043a: \u041f\u0421\u041a + \u0418\u0421"),
         "",
         f"{DOC} " + _u(r"\u0421\u0447\u0435\u0442\u0430: \u0444\u0430\u0439\u043b\u043e\u0432") + f" {_invoice_file_count(max_summary)} / " + _u(r"\u0441\u0442\u0440\u043e\u043a") + f" {max_summary.get('invoice_rows', 0)} / Google {max_summary.get('google_rows', 0)}",
@@ -67,6 +69,12 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
             + _u(r"\u043f\u0435\u0440\u0435\u043d\u0435\u0441\u0435\u043d\u043e") + f" {drive.get('moved', 0)} / "
             + _u(r"\u0443\u0436\u0435 \u0432 \u0430\u0440\u0445\u0438\u0432\u0435") + f" {drive.get('already_archived', 0)}"
         )
+    if fintablo_summary:
+        lines.append(
+            f"{RECEIPT} FinTablo: "
+            + _u(r"\u0431\u0435\u0437\u043d\u0430\u043b") + f" {fintablo_summary.get('noncash_updated', 0)}/{fintablo_summary.get('noncash_updates', 0)}, "
+            + _u(r"\u043d\u0430\u043b\u0438\u0447\u043a\u0430") + f" {fintablo_summary.get('cash_created', 0)}/{fintablo_summary.get('cash_missing', 0)}"
+        )
 
     lines.append("")
     problems: list[str] = []
@@ -78,6 +86,8 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
             problems.append(f"{key}: {value}")
     if max_summary.get("days_error", 0):
         problems.append(_u(r"\u0434\u043d\u0435\u0439 \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 MAX: ") + str(max_summary["days_error"]))
+    if fintablo_summary.get("errors", 0):
+        problems.append(f"FinTablo errors: {fintablo_summary['errors']}")
     if problems:
         lines.append(f"{WARN} " + _u(r"\u041d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c"))
         lines.extend(_u(r"\u2022 ") + item for item in problems[:8])
@@ -127,6 +137,25 @@ def _format_period(report: dict[str, Any]) -> str:
     return f"{_format_date(start)} \u2014 {_format_date(end)}"
 
 
+def _format_period_label(report: dict[str, Any]) -> str:
+    start = str(report.get("start_date") or report.get("date") or "")
+    end = str(report.get("end_date") or start)
+    if start != end:
+        return _u(r"\u041f\u0435\u0440\u0438\u043e\u0434") + f": {_format_period(report)}"
+    label = _u(r"\u0414\u0430\u0442\u0430")
+    try:
+        report_date = datetime.fromisoformat(start).date()
+        today = datetime.now().date()
+        delta_days = (today - report_date).days
+        if delta_days == 0:
+            label = _u(r"\u0421\u0435\u0433\u043e\u0434\u043d\u044f")
+        elif delta_days == 1:
+            label = _u(r"\u0412\u0447\u0435\u0440\u0430")
+    except ValueError:
+        pass
+    return f"{label}: {_format_date(start)}"
+
+
 def _format_date(value: str) -> str:
     try:
         return datetime.fromisoformat(value).strftime("%d.%m.%Y")
@@ -174,7 +203,7 @@ def _last_json_object(value: str) -> dict[str, Any]:
             continue
         if not isinstance(parsed, dict):
             continue
-        if any(key in parsed for key in ("payment_records", "final_records", "matched_invoices")):
+        if any(key in parsed for key in ("payment_records", "final_records", "matched_invoices", "noncash_updated", "cash_created", "cash_missing")):
             return parsed
         fallback = parsed
     return fallback
