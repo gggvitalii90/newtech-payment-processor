@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import json
@@ -88,6 +88,10 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         problems.append(_u(r"\u0434\u043d\u0435\u0439 \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439 MAX: ") + str(max_summary["days_error"]))
     if fintablo_summary.get("errors", 0):
         problems.append(f"FinTablo errors: {fintablo_summary['errors']}")
+    if fintablo_summary.get("noncash_no_payload", 0):
+        problems.append(f"FinTablo без квалификации: {fintablo_summary['noncash_no_payload']}")
+    if fintablo_summary.get("noncash_no_match", 0):
+        problems.append(f"FinTablo без строки в Итоговой: {fintablo_summary['noncash_no_match']}")
     if problems:
         lines.append(f"{WARN} " + _u(r"\u041d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c"))
         lines.extend(_u(r"\u2022 ") + item for item in problems[:8])
@@ -214,3 +218,4 @@ def _sum_issues(summary: dict[str, Any]) -> dict[str, int]:
     if not isinstance(issues, dict):
         return {}
     return {str(key): int(value) for key, value in issues.items()}
+

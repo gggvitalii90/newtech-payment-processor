@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import csv
@@ -51,6 +51,7 @@ class SyncResult:
     noncash_updates: int = 0
     noncash_updated: int = 0
     noncash_no_match: int = 0
+    noncash_no_payload: int = 0
     cash_missing: int = 0
     cash_created: int = 0
     cash_skipped: int = 0
@@ -191,6 +192,8 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
         error = ""
         if payload:
             result.noncash_updates += 1
+        else:
+            result.noncash_no_payload += 1
         if apply and payload:
             try:
                 client.request_json("PUT", f"/v1/transaction/{tx['id']}", payload=payload)
@@ -272,3 +275,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
