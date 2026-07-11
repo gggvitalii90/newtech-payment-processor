@@ -233,7 +233,12 @@ def match_manual_for_tx(tx: dict[str, Any], manual_rows: list[ManualRow]) -> tup
     tx_amount = parse_amount(tx.get("value"))
     tx_invoice = extract_invoice(tx.get("description", ""))
     tx_desc = norm(tx.get("description", ""))
-    noncash_rows = [r for r in manual_rows if not r.payment_type.startswith(CASH)]
+    tx_group = str(tx.get("group") or "")
+    noncash_rows = [
+        r for r in manual_rows
+        if not r.payment_type.startswith(CASH)
+        and (tx_group not in ("income", "outcome") or r.operation_group == tx_group)
+    ]
     candidates = [r for r in noncash_rows if r.date == tx_date and r.amount == tx_amount]
     if tx_invoice:
         invoice_amount = [r for r in noncash_rows if r.amount == tx_amount and r.invoice and r.invoice == tx_invoice]
@@ -309,6 +314,9 @@ def main() -> int:
     for tx in transactions:
         moneybag = moneybags.get(int(tx.get("moneybagId") or 0), {})
         if moneybag.get("type") == "nal":
+            continue
+        if str(tx.get("group") or "") == "transfer":
+            update_rows.append({"transaction_id": tx.get("id"), "date": tx.get("date"), "value": tx.get("value"), "action": "skip_transfer", "description": tx.get("description", "")})
             continue
         current_missing = not tx.get("categoryId") or not tx.get("dealId") or not tx.get("directionId") or int(tx.get("categoryId") or 0) in (1404181, 1404182)
         if not current_missing:
