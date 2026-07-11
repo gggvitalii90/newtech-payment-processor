@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import csv
@@ -406,6 +406,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 
 
 
