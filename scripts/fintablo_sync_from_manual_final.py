@@ -191,7 +191,11 @@ def resolve_ids(row: ManualRow, categories, directions, deals) -> tuple[dict[str
 
     category = categories.get(compact_key(row.values.get(budget_key, "")))
     if category:
-        updates["categoryId"] = int(category["id"])
+        category_group = str(category.get("group") or "")
+        if category_group and category_group != row.operation_group:
+            notes.append("wrong_category_group_skipped")
+        else:
+            updates["categoryId"] = int(category["id"])
     elif row.values.get(budget_key, "").strip():
         notes.append("category_not_found")
 
@@ -321,12 +325,17 @@ def main() -> int:
         if args.only_category:
             payload = {"categoryId": payload["categoryId"]} if "categoryId" in payload else {}
             action = "update" if payload else "skip_no_category_payload"
+        error = ""
         if args.apply and payload:
-            client.request_json("PUT", f"/v1/transaction/{tx['id']}", payload=payload)
-            action = "updated"
+            try:
+                client.request_json("PUT", f"/v1/transaction/{tx['id']}", payload=payload)
+                action = "updated"
+            except Exception as exc:
+                action = "error"
+                error = str(exc)
         update_rows.append({
             "transaction_id": tx.get("id"), "date": tx.get("date"), "value": tx.get("value"), "action": action,
-            "reason": reason, "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes),
+            "reason": reason, "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes), "error": error,
             "manual_sheet": row.sheet, "manual_row": row.row_number,
             "manual_object": row.values.get("Объект", ""), "manual_project": row.values.get("Проект", ""), "manual_budget": row.values.get("Статья бюджета", ""),
             "description": tx.get("description", ""),
@@ -390,6 +399,9 @@ def main() -> int:
         "manual_rows": len(manual_rows),
         "transactions": len(transactions),
         "updates": len([r for r in update_rows if r.get("action") in ("update", "updated")]),
+        "updated": len([r for r in update_rows if r.get("action") == "updated"]),
+        "update_errors": len([r for r in update_rows if r.get("action") == "error"]),
+        "wrong_category_group": len([r for r in update_rows if "wrong_category_group_skipped" in str(r.get("notes", ""))]),
         "unmatched_updates": len([r for r in update_rows if r.get("action") == "no_match"]),
         "missing_cash": len(missing_cash),
         "updates_path": str(updates_path),
