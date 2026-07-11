@@ -79,8 +79,8 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
     if manual_fintablo_summary:
         lines.append(
             f"{RECEIPT} FinTablo manual: "
-            + _u(r"\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e") + f" {manual_fintablo_summary.get('updates', 0)}, "
-            + _u(r"\u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e") + f" {manual_fintablo_summary.get('unmatched_updates', 0)}"
+            + _u(r"\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e") + f" {manual_fintablo_summary.get('updated', manual_fintablo_summary.get('updates', 0))}, "
+            + _u(r"\u043a \u0441\u0432\u0435\u0440\u043a\u0435") + f" {manual_fintablo_summary.get('unmatched_updates', 0)}"
         )
 
     lines.append("")
@@ -99,8 +99,8 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         problems.append(f"FinTablo без квалификации: {fintablo_summary['noncash_no_payload']}")
     if fintablo_summary.get("noncash_no_match", 0):
         problems.append(f"FinTablo без строки в Итоговой: {fintablo_summary['noncash_no_match']}")
-    if manual_fintablo_summary.get("unmatched_updates", 0):
-        problems.append(f"FinTablo manual без совпадения: {manual_fintablo_summary['unmatched_updates']}")
+    if manual_fintablo_summary.get("update_errors", 0):
+        problems.append(f"FinTablo manual errors: {manual_fintablo_summary['update_errors']}")
     if problems:
         lines.append(f"{WARN} " + _u(r"\u041d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c"))
         lines.extend(_u(r"\u2022 ") + item for item in problems[:8])

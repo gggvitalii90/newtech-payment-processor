@@ -37,12 +37,12 @@ def test_format_update_notification_contains_period_counts_and_clickable_link() 
     assert _ru(r"\U0001f4b5 \u041d\u0430\u043b\u0438\u0447\u043a\u0430: 4 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439") in message
     assert _ru(r"\U0001f4ca \u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f: 8 \u0441\u0442\u0440\u043e\u043a") in message
     assert _ru(r"\U0001f9fe FinTablo: \u0431\u0435\u0437\u043d\u0430\u043b 2/3, \u043d\u0430\u043b\u0438\u0447\u043a\u0430 4/4") in message
-    assert "FinTablo manual: " + _ru(r"\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e 7, \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e 2") in message
+    assert "FinTablo manual: " + _ru(r"\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e 7, \u043a \u0441\u0432\u0435\u0440\u043a\u0435 2") in message
     assert _ru(r"\u26a0\ufe0f \u041d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c") in message
     assert "missing_payment_fields: 1" in message
     assert "FinTablo без квалификации: 5" in message
     assert "FinTablo " + _ru(r"\u0431\u0435\u0437 \u0441\u0442\u0440\u043e\u043a\u0438 \u0432 \u0418\u0442\u043e\u0433\u043e\u0432\u043e\u0439: 1") in message
-    assert "FinTablo manual " + _ru(r"\u0431\u0435\u0437 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u044f: 2") in message
+    assert "FinTablo manual " + _ru(r"\u0431\u0435\u0437 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u044f") not in message
     assert '<a href="https://docs.google.com/spreadsheets/d/sheet123/edit">' + _ru(r"\u041e\u0442\u043a\u0440\u044b\u0442\u044c Google \u0442\u0430\u0431\u043b\u0438\u0446\u0443") + '</a>' in message
 
 
