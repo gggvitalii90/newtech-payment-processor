@@ -19,7 +19,10 @@ from payment_processor.google_api import load_google_settings, get_credentials, 
 
 
 def _u(value: str) -> str:
-    return value.encode("ascii").decode("unicode_escape")
+    try:
+        return value.encode("ascii").decode("unicode_escape")
+    except UnicodeEncodeError:
+        return value
 
 
 MONTH_SHEETS = {
