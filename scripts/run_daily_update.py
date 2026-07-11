@@ -55,6 +55,17 @@ def build_period_commands(start: date, end: date, staging_root: Path, dry_run: b
     if not dry_run:
         fintablo_command.append("--apply")
     commands.append(fintablo_command)
+
+    manual_start = start.strftime("%d.%m.%Y")
+    manual_end = end.strftime("%d.%m.%Y")
+    manual_fintablo_command = [
+        sys.executable, "scripts/fintablo_sync_from_manual_final.py",
+        "--start", manual_start, "--end", manual_end,
+        "--output-dir", "reports",
+    ]
+    if not dry_run:
+        manual_fintablo_command.append("--apply")
+    commands.append(manual_fintablo_command)
     return commands
 
 
