@@ -59,3 +59,25 @@ def test_format_update_notification_uses_single_day_label() -> None:
 
     assert _ru(r"\U0001f4c5 \u0414\u0430\u0442\u0430: 29.06.2026") in message
     assert _ru(r"\u041f\u0435\u0440\u0438\u043e\u0434: 29.06.2026") not in message
+
+
+def test_format_update_notification_includes_failed_step_error_excerpt() -> None:
+    report = {
+        "status": "error",
+        "start_date": "2026-07-12",
+        "end_date": "2026-07-12",
+        "steps": [
+            {
+                "command": ["scripts/backfill_payment_history.py", "--mode", "IS"],
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "Traceback line\nRuntimeError: " + _ru(r"\u041d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d MAX_IS_CHAT_ID"),
+            }
+        ],
+    }
+
+    message = format_update_notification(report, "sheet123")
+
+    assert _ru(r"\u274c \u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 NewTech \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u043e\u0441\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439") in message
+    assert _ru(r"\u0448\u0430\u0433 \u0443\u043f\u0430\u043b") + ": scripts/backfill_payment_history.py --mode IS" in message
+    assert "RuntimeError: " + _ru(r"\u041d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d MAX_IS_CHAT_ID") in message

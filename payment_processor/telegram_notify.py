@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 import json
@@ -87,7 +87,11 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
     problems: list[str] = []
     for step in failed_steps:
         command = " ".join(str(part) for part in step.get("command", []))
-        problems.append(_u(r"\u0448\u0430\u0433 \u0443\u043f\u0430\u043b: ") + (command or "unknown"))
+        problem = _u(r"\u0448\u0430\u0433 \u0443\u043f\u0430\u043b: ") + (command or "unknown")
+        excerpt = _step_error_excerpt(step)
+        if excerpt:
+            problem += " | " + excerpt
+        problems.append(problem)
     for key, value in sorted(issues.items()):
         if value:
             problems.append(f"{key}: {value}")
@@ -178,6 +182,17 @@ def _format_date(value: str) -> str:
 
 def _steps_for_script(report: dict[str, Any], script_name: str) -> list[dict[str, Any]]:
     return [step for step in report.get("steps", []) if any(str(part).endswith(script_name) for part in step.get("command", []))]
+
+
+def _step_error_excerpt(step: dict[str, Any], limit: int = 180) -> str:
+    text = str(step.get("stderr") or step.get("stdout") or "")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return ""
+    excerpt = lines[-1]
+    if len(excerpt) > limit:
+        excerpt = excerpt[: limit - 3].rstrip() + "..."
+    return excerpt
 
 
 def _sum_key_value_stdout(steps: list[dict[str, Any]]) -> dict[str, int]:
