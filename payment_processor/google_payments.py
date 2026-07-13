@@ -216,7 +216,9 @@ def _upsert_rows(
         row = row_builder(record)
         key = key_builder(row)
         if key is not None:
-            incoming_by_key.setdefault(key, []).append(row)
+            rows_for_key = incoming_by_key.setdefault(key, [])
+            if row not in rows_for_key:
+                rows_for_key.append(row)
     updates: list[tuple[str, list[list[str]]]] = []
     new_rows: list[list[str]] = []
     for key, rows in incoming_by_key.items():

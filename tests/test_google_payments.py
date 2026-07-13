@@ -189,3 +189,15 @@ def test_archive_upsert_updates_renamed_copy_of_same_payment_number() -> None:
     sheets.values_api.headers[PAYMENT_ARCHIVE_SHEET_NAME] = PAYMENT_ARCHIVE_COLUMNS
     sheets.values_api.rows[PAYMENT_ARCHIVE_SHEET_NAME] = [payment_archive_row(original)]
     assert upsert_payment_archive(sheets, "spreadsheet", [renamed]) == (1, 0)
+
+
+def test_archive_upsert_does_not_append_exact_duplicate_incoming_rows() -> None:
+    sheets = FakeSheets(existing_titles=[PAYMENT_ARCHIVE_SHEET_NAME])
+    existing = record("payments 7_2.pdf", "70000", payment_date="2026-07-10")
+    sheets.values_api.headers[PAYMENT_ARCHIVE_SHEET_NAME] = PAYMENT_ARCHIVE_COLUMNS
+    sheets.values_api.rows[PAYMENT_ARCHIVE_SHEET_NAME] = [payment_archive_row(existing)]
+
+    updated, appended = upsert_payment_archive(sheets, "spreadsheet", [existing, existing])
+
+    assert (updated, appended) == (1, 0)
+    assert sheets.values_api.appended == {}

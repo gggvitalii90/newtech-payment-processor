@@ -54,3 +54,21 @@ def test_backfill_payment_history_passes_cli_upsert_to_google_writer() -> None:
     source = Path("scripts/backfill_payment_history.py").read_text(encoding="utf-8")
 
     assert "upsert=args.upsert" in source
+
+
+def test_upsert_mode_does_not_delete_shared_payment_archive_dates(monkeypatch):
+    import payment_processor.history_runner as runner
+    from payment_processor.models import PaymentRecord
+
+    deleted = []
+    monkeypatch.setattr(runner, "setup_payment_sheets", lambda *_args: None)
+    monkeypatch.setattr(runner, "delete_rows_for_dates", lambda *_args: deleted.append(_args) or 0)
+    monkeypatch.setattr(runner, "upsert_payment_archive", lambda *_args: (0, 1))
+    monkeypatch.setattr(runner, "upsert_final_rows", lambda *_args, **_kwargs: (0, 1))
+    payment = PaymentRecord("pp.pdf", "2026-07-10", "", "", "", "", "", "", "", "", "", "", "", "")
+    final = PaymentRecord("final.pdf", "2026-07-10", "", "", "", "", "", "", "", "", "", "", "", "")
+
+    runner.write_google_history(object(), "sheet", [payment], [final], upsert=True)
+
+    assert len(deleted) == 1
+    assert deleted[0][2] != runner.PAYMENT_ARCHIVE_SHEET_NAME

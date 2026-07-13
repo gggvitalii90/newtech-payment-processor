@@ -24,7 +24,6 @@ def write_google_history(
     if upsert:
         payment_dates = {date for record in payments if (date := getattr(record, "date", ""))}
         final_dates = {date for record in final if (date := getattr(record, "date", ""))}
-        delete_rows_for_dates(sheets_service, spreadsheet_id, PAYMENT_ARCHIVE_SHEET_NAME, payment_dates, "J")
         delete_rows_for_dates(sheets_service, spreadsheet_id, final_sheet_name, final_dates, "N")
         updated, appended = upsert_payment_archive(sheets_service, spreadsheet_id, payments)
         payment_count = updated + appended
