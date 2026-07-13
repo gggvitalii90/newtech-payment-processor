@@ -102,3 +102,41 @@ def test_main_runs_period_as_separate_daily_reports(monkeypatch):
 
     assert daily.main() == 0
     assert calls == ["2026-07-06", "2026-07-07"]
+
+
+def test_daily_update_keeps_google_result_when_fintablo_is_unavailable(monkeypatch):
+    import scripts.run_daily_update as daily
+
+    class Args:
+        staging_root = "stage"
+        dry_run = False
+        no_telegram = True
+        payment_source = "max"
+
+    class Completed:
+        def __init__(self, command, returncode=0, stdout="{}", stderr=""):
+            self.args = command
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    commands = [
+        ["python", "scripts/backfill_max_archive.py"],
+        ["python", "scripts/backfill_payment_history.py"],
+        ["python", "scripts/fintablo_sync_daily.py"],
+    ]
+    monkeypatch.setattr(daily, "build_daily_commands", lambda *_args: commands)
+
+    def run(command, **_kwargs):
+        if command[1] == "scripts/fintablo_sync_daily.py":
+            return Completed(command, 1, "", "FinTablo subscription expired")
+        return Completed(command)
+
+    reports = []
+    monkeypatch.setattr(daily.subprocess, "run", run)
+    monkeypatch.setattr(daily, "finalize_drive", lambda day: {"paid_invoices": 0})
+    monkeypatch.setattr(daily, "_write_report", lambda _start, _end, report: reports.append(report))
+
+    assert daily._run_one_day(date(2026, 7, 13), Args()) == 0
+    assert reports[0]["status"] == "ok"
+    assert reports[0]["steps"][-1]["returncode"] == 1

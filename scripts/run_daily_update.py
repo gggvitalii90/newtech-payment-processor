@@ -205,6 +205,8 @@ def _run_one_day(day: date, args: argparse.Namespace) -> int:
             "stdout": stdout[-4000:], "stderr": stderr[-4000:],
         })
         if result.returncode != 0:
+            if _is_optional_fintablo_command(command):
+                continue
             report["status"] = "error"
             exit_code = result.returncode
             break
@@ -218,6 +220,11 @@ def _run_one_day(day: date, args: argparse.Namespace) -> int:
     if not args.no_telegram:
         _send_telegram_report(report)
     return exit_code
+
+
+def _is_optional_fintablo_command(command: list[str]) -> bool:
+    scripts = {"scripts/fintablo_sync_daily.py", "scripts/fintablo_sync_from_manual_final.py"}
+    return len(command) > 1 and command[1] in scripts
 
 
 def _selected_period(args: argparse.Namespace) -> tuple[date, date]:

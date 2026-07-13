@@ -30,6 +30,21 @@ def test_setup_payment_sheets_creates_final_and_payment_archive() -> None:
     assert sheets.values_api.updated[f"'{PAYMENT_ARCHIVE_SHEET_NAME}'!A1:J1"] == [PAYMENT_ARCHIVE_COLUMNS]
 
 
+
+def test_setup_payment_sheets_resets_data_rows_to_plain_format() -> None:
+    sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
+    sheets.values_api.headers[FINAL_SHEET_NAME] = FINAL_COLUMNS
+
+    setup_payment_sheets(sheets, "spreadsheet")
+
+    data_format_requests = [
+        request for request in sheets.format_requests
+        if request.get("repeatCell", {}).get("range", {}).get("startRowIndex") == 1
+    ]
+    assert data_format_requests
+    assert data_format_requests[0]["repeatCell"]["cell"]["userEnteredFormat"]["textFormat"] == {"bold": False}
+
+
 def test_replace_final_rows_rewrites_full_history() -> None:
     sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
     replace_final_rows(sheets, "spreadsheet", [record("one.pdf"), record("two.pdf", "200")])
@@ -87,6 +102,18 @@ def test_upsert_final_rows_matches_existing_google_date_format() -> None:
 
     assert (updated, appended) == (1, 0)
     assert sheets.values_api.batch_updated[f"'{FINAL_SHEET_NAME}'!A2:N2"] == [final_row(incoming)]
+
+
+
+def test_upsert_final_rows_accepts_extra_google_columns_without_clearing_history() -> None:
+    sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
+    sheets.values_api.headers[FINAL_SHEET_NAME] = [*FINAL_COLUMNS, "????? ????"]
+    sheets.values_api.rows[FINAL_SHEET_NAME] = [record("old.pdf", "100", payment_date="01.04.2026").as_row()]
+
+    updated, appended = upsert_final_rows(sheets, "spreadsheet", [record("new.pdf", "200", payment_date="2026-07-13")])
+
+    assert (updated, appended) == (0, 1)
+    assert sheets.values_api.cleared == []
 
 
 class FakeRequest:

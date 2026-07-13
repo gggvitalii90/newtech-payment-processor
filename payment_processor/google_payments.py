@@ -198,7 +198,7 @@ def _upsert_rows(
     key_builder: Callable[[list[str]], tuple[str, ...] | None],
 ) -> tuple[int, int]:
     headers = _read_headers(sheets_service, spreadsheet_id, sheet_name, last_column)
-    if headers != columns:
+    if not _headers_match_schema(headers, columns):
         if headers:
             _clear_values(sheets_service, spreadsheet_id, f"'{sheet_name}'!A1:N")
         _write_values(sheets_service, spreadsheet_id, f"'{sheet_name}'!A1:{last_column}1", [columns])
@@ -294,6 +294,12 @@ def _payment_document_number(file_name: str) -> str:
     match = re.search(r"_(\d+)[.]pdf$", normalized)
     return match.group(1) if match else normalized
 
+def _headers_match_schema(headers: list[str], columns: list[str]) -> bool:
+    if headers == columns:
+        return True
+    return len(headers) >= len(columns) and headers[:len(columns)] == columns
+
+
 def _read_headers(sheets_service, spreadsheet_id: str, sheet_name: str, last_column: str) -> list[str]:
     response = sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
@@ -351,6 +357,7 @@ def _format_requests(sheet_id: int, column_count: int) -> list[dict]:
         {"updateSheetProperties": {"properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
         {"setBasicFilter": {"filter": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": column_count}}}},
         {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.9, "green": 0.9, "blue": 0.9}, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+        {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 1, "green": 1, "blue": 1}, "textFormat": {"bold": False}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
     ]
 
 
