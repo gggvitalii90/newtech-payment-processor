@@ -36,6 +36,9 @@ PRODUCTION = u("\\u041f\\u0440\\u043e\\u0438\\u0437\\u0432\\u043e\\u0434\\u0441\
 BANK_PROJECT = u("\\u0411\\u0430\\u043d\\u043a")
 TAX_PROJECT = u("\\u041d\\u0430\\u043b\\u043e\\u0433\\u0438")
 PRODUCTION_EXPENSES = u("\\u041f\\u0440\\u043e\\u0438\\u0437\\u0432\\u043e\\u0434\\u0441\\u0442\\u0432\\u0435\\u043d\\u043d\\u044b\\u0435 \\u0440\\u0430\\u0441\\u0445\\u043e\\u0434\\u044b")
+RETURN = u("\\u0412\\u043e\\u0437\\u0432\\u0440\\u0430\\u0442")
+FOT = u("\\u0424\\u041e\\u0422")
+SALARY = u("\\u0417\\u0430\\u0440\\u043f\\u043b\\u0430\\u0442\\u0430")
 
 FIELD_NAMES = [
     "date", "operation_type", "payment_type", "bank", "counterparty", "invoice", "object", "project",
@@ -125,6 +128,8 @@ def by_name(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         key = normalize_key(str(item.get("name") or ""))
         if key and key not in result:
             result[key] = item
+    if items and any("group" in item for item in items):
+        result["__items__"] = {"items": items}
     return result
 
 
@@ -197,23 +202,64 @@ def current_stage_ids(deals: list[dict[str, Any]]) -> set[int]:
     return ids
 
 
+def category_project_fallback(project_key: str) -> str:
+    if project_key == normalize_key(FOT):
+        return SALARY
+    return ""
+
+
+def _category_targets(line: ManualLine) -> list[str]:
+    values = line.values
+    targets: list[str] = []
+    budget = values.get("budget", "").strip()
+    if budget:
+        targets.append(budget)
+
+    operation_key = normalize_key(values.get("operation_type") or "")
+    object_key = normalize_key(values.get("object") or "")
+    project = (values.get("project") or "").strip()
+    project_key = normalize_key(project)
+    if operation_key == CONVERSION or object_key == CONVERSION or project_key == CONVERSION:
+        targets.append(u("\\u041a\\u043e\\u043d\\u0432\\u0435\\u0440\\u0442\\u0430\\u0446\\u0438\\u044f"))
+    if project_key == normalize_key(RETURN):
+        targets.append(RETURN)
+    fallback = category_project_fallback(project_key)
+    if fallback:
+        targets.append(fallback)
+    return targets
+
+
+def _category_candidates(categories: dict[str, dict[str, Any]], target: str) -> list[dict[str, Any]]:
+    target_key = normalize_key(target)
+    all_items = categories.get("__items__", {}).get("items")
+    if isinstance(all_items, list):
+        return [item for item in all_items if normalize_key(str(item.get("name") or "")) == target_key]
+    candidate = categories.get(target_key)
+    return [candidate] if candidate else []
+
+
 def category_update(line: ManualLine, tx: dict[str, Any], categories: dict[str, dict[str, Any]], category_by_id: dict[int, dict[str, Any]]) -> tuple[dict[str, int], list[str]]:
     payload: dict[str, int] = {}
     notes: list[str] = []
-    target = line.values.get("budget", "").strip()
-    if not target:
+    targets = _category_targets(line)
+    if not targets:
         return payload, notes
-    category = categories.get(normalize_key(target))
+    category = None
+    for target in targets:
+        for candidate in _category_candidates(categories, target):
+            candidate_group = str(candidate.get("group") or "")
+            tx_group = str(tx.get("group") or "")
+            if candidate_group and tx_group and candidate_group != tx_group:
+                continue
+            category = candidate
+            break
+        if category:
+            break
     if not category:
         notes.append("category_not_found")
         return payload, notes
-    current = category_by_id.get(int(tx.get("categoryId") or 0), {})
-    current_key = normalize_key(current.get("name") or "")
-    if str(category.get("group") or "") and str(tx.get("group") or "") and str(category.get("group")) != str(tx.get("group")):
-        notes.append("category_group_mismatch_skipped")
-        return payload, notes
     target_id = int(category["id"])
-    if int(tx.get("categoryId") or 0) != target_id and (not current_key or current_key in UNALLOCATED_CATEGORIES):
+    if int(tx.get("categoryId") or 0) != target_id:
         payload["categoryId"] = target_id
     return payload, notes
 
@@ -232,12 +278,13 @@ def payload_from_manual(
     payload, cat_notes = category_update(line, tx, categories, category_by_id)
     notes.extend(cat_notes)
 
-    operation_key = normalize_key(values.get("operation_type"))
-    object_key = normalize_key(values.get("object"))
+    operation_key = normalize_key(values.get("operation_type") or "")
+    object_key = normalize_key(values.get("object") or "")
     project = values.get("project", "")
     project_key = normalize_key(project)
     if operation_key == CONVERSION or object_key == CONVERSION or project_key == CONVERSION:
-        return {}, ["skip_conversion"]
+        notes.append("skip_conversion_links")
+        return payload, notes
 
     direction = directions.get(target_direction_key(project))
     deal = deals.get(object_key)

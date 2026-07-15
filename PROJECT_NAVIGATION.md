@@ -7,7 +7,7 @@
 `deploy/run_daily.sh` запускает Docker Compose сервис `daily`, который выполняет:
 
 ```bash
-python scripts/run_daily_update.py --start YYYY-MM-DD --end YYYY-MM-DD --payment-source max --staging-root /data
+python scripts/run_daily_update.py --start YYYY-MM-DD --end YYYY-MM-DD --payment-source fintablo --staging-root /data
 ```
 
 `run_daily_update.py` не делает один общий отчет за диапазон. Он проходит по датам внутри диапазона и для каждой даты делает отдельный цикл и отдельный Telegram-отчет.

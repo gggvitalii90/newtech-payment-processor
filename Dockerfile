@@ -23,4 +23,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN mkdir -p /data/payments /app/reports /app/secrets
 
-CMD ["python", "scripts/run_daily_update.py", "--payment-source", "max"]
+CMD ["python", "scripts/run_daily_update.py", "--payment-source", "fintablo"]

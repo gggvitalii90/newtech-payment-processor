@@ -24,11 +24,11 @@ from payment_processor.models import PaymentRecord
 from payment_processor.telegram_notify import format_update_notification, send_telegram_message
 
 
-def build_daily_commands(day: date, staging_root: Path, dry_run: bool, payment_source: str = "max") -> list[list[str]]:
+def build_daily_commands(day: date, staging_root: Path, dry_run: bool, payment_source: str = "fintablo") -> list[list[str]]:
     return build_period_commands(day, day, staging_root, dry_run, payment_source)
 
 
-def build_period_commands(start: date, end: date, staging_root: Path, dry_run: bool, payment_source: str = "max") -> list[list[str]]:
+def build_period_commands(start: date, end: date, staging_root: Path, dry_run: bool, payment_source: str = "fintablo") -> list[list[str]]:
     start_text = start.isoformat()
     end_text = end.isoformat()
     commands: list[list[str]] = []
@@ -163,7 +163,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--staging-root", default=r"C:\tmp\newtech-payment-history")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-telegram", action="store_true")
-    parser.add_argument("--payment-source", choices=["max", "fintablo"], default="max")
+    parser.add_argument("--payment-source", choices=["max", "fintablo"], default="fintablo")
     return parser.parse_args()
 
 

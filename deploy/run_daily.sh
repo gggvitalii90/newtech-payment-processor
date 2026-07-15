@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/newtech-payment-processor}"
-PAYMENT_SOURCE="${PAYMENT_SOURCE:-max}"
+PAYMENT_SOURCE="${PAYMENT_SOURCE:-fintablo}"
 STAGING_ROOT="${STAGING_ROOT:-/data}"
 START_DATE="${START_DATE:-$(date -d 'yesterday' +%F)}"
 END_DATE="${END_DATE:-$(date +%F)}"

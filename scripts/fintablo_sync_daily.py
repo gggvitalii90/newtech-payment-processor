@@ -192,6 +192,8 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
         error = ""
         if payload:
             result.noncash_updates += 1
+        elif notes == ["skip_conversion_links"]:
+            action = "skip_conversion_links"
         else:
             result.noncash_no_payload += 1
         if apply and payload:

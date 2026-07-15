@@ -77,6 +77,13 @@ def test_finalization_requires_same_invoice_link_and_payment_date():
     assert find_confirmed_final_payment(invoice, [wrong, right], date(2026, 6, 24)) is right
 
 
+def test_daily_commands_default_to_fintablo_payment_source():
+    commands = build_daily_commands(date(2026, 7, 14), Path("stage"), dry_run=False)
+    payment_commands = commands[2:4]
+    for command in payment_commands:
+        assert command[command.index("--payment-source") + 1] == "fintablo"
+
+
 def test_daily_commands_can_use_fintablo_payment_source():
     commands = build_daily_commands(date(2026, 7, 2), Path("stage"), dry_run=False, payment_source="fintablo")
     payment_commands = commands[2:4]
@@ -94,7 +101,7 @@ def test_main_runs_period_as_separate_daily_reports(monkeypatch):
         staging_root = "stage"
         dry_run = True
         no_telegram = True
-        payment_source = "max"
+        payment_source = "fintablo"
 
     calls = []
     monkeypatch.setattr(daily, "parse_args", lambda: Args())
@@ -111,7 +118,7 @@ def test_daily_update_keeps_google_result_when_fintablo_is_unavailable(monkeypat
         staging_root = "stage"
         dry_run = False
         no_telegram = True
-        payment_source = "max"
+        payment_source = "fintablo"
 
     class Completed:
         def __init__(self, command, returncode=0, stdout="{}", stderr=""):
