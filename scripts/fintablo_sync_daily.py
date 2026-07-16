@@ -52,6 +52,8 @@ class SyncResult:
     noncash_updated: int = 0
     noncash_no_match: int = 0
     noncash_no_payload: int = 0
+    cash_final_rows: int = 0
+    cash_existing: int = 0
     cash_missing: int = 0
     cash_created: int = 0
     cash_skipped: int = 0
@@ -208,12 +210,14 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
         report.append({"kind": "noncash", "id": tx.get("id"), "action": action, "reason": reason, "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes), "error": error, "date": tx.get("date"), "value": tx.get("value"), "description": tx.get("description", "")})
 
     existing_cash = {cash_key_from_tx(tx) for tx in txs if moneybags.get(int(tx.get("moneybagId") or 0), {}).get("type") == "nal"}
+    cash_records = [record for record in final_records if record.payment_type.startswith(PAYMENT_CASH)]
+    result.cash_final_rows = len(cash_records)
     cash_account_id = cash_moneybag_id(moneybags)
-    for record in final_records:
-        if not record.payment_type.startswith(PAYMENT_CASH):
-            continue
+    for record in cash_records:
         key = cash_key_from_record(record)
         if key in existing_cash:
+            result.cash_existing += 1
+            report.append({"kind": "cash", "id": "", "action": "already_exists", "reason": "cash_key_exists", "date": record.date, "value": record.amount, "description": record.purpose})
             continue
         cash_amount = amount(record.amount)
         line = manual_line_from_record(record)

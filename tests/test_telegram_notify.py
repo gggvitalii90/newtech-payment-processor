@@ -22,7 +22,7 @@ def test_format_update_notification_contains_period_counts_and_clickable_link() 
             {"command": ["scripts/backfill_max_archive.py", "--mode", "IS"], "returncode": 0, "stdout": "downloaded= 1\npayment_orders= 1\ninvoice_rows= 1\ngoogle_rows= 1\ncash_rows= 0\npayment_rows= 1\n"},
             {"command": ["scripts/backfill_payment_history.py", "--mode", "PSK"], "returncode": 0, "stdout": '{"payment_records": 3, "matched_invoices": 2, "missing_payment_links": 1, "cash_operations": 4, "final_records": 7, "issues": {"missing_payment_fields": 1}}'},
             {"command": ["scripts/backfill_payment_history.py", "--mode", "IS"], "returncode": 0, "stdout": '{"payment_records": 1, "matched_invoices": 1, "missing_payment_links": 0, "cash_operations": 0, "final_records": 1, "issues": {}}'},
-            {"command": ["scripts/fintablo_sync_daily.py"], "returncode": 0, "stdout": '{"transactions": 10, "final_rows": 8, "noncash_updates": 3, "noncash_updated": 2, "noncash_no_payload": 5, "noncash_no_match": 1, "cash_missing": 4, "cash_created": 4, "errors": 0}'},
+            {"command": ["scripts/fintablo_sync_daily.py"], "returncode": 0, "stdout": '{"transactions": 10, "final_rows": 8, "noncash_updates": 3, "noncash_updated": 2, "noncash_no_payload": 5, "noncash_no_match": 1, "cash_final_rows": 4, "cash_existing": 2, "cash_missing": 2, "cash_created": 2, "errors": 0}'},
             {"command": ["scripts/fintablo_sync_from_manual_final.py"], "returncode": 0, "stdout": '{"manual_rows": 20, "transactions": 10, "updates": 7, "unmatched_updates": 2, "missing_cash": 0}'},
         ],
         "drive_lifecycle": {"paid_invoices": 2, "moved": 1, "already_archived": 1},
@@ -36,7 +36,7 @@ def test_format_update_notification_contains_period_counts_and_clickable_link() 
     assert _ru(r"\U0001f3e6 \u041f\u041f: 4 / \u0441\u043e\u043f\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u043e 3 / \u0431\u0435\u0437 \u0441\u0447\u0435\u0442\u0430 1") in message
     assert _ru(r"\U0001f4b5 \u041d\u0430\u043b\u0438\u0447\u043a\u0430: 4 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439") in message
     assert _ru(r"\U0001f4ca \u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f: 8 \u0441\u0442\u0440\u043e\u043a") in message
-    assert _ru(r"\U0001f9fe FinTablo: \u0431\u0435\u0437\u043d\u0430\u043b 2/3, \u043d\u0430\u043b\u0438\u0447\u043a\u0430 4/4") in message
+    assert _ru(r"\U0001f9fe FinTablo: \u0431\u0435\u0437\u043d\u0430\u043b 2/3, \u043d\u0430\u043b\u0438\u0447\u043a\u0430 \u0432 \u0418\u0442\u043e\u0433\u043e\u0432\u043e\u0439 4, \u0441\u043e\u0437\u0434\u0430\u043d\u043e 2/2, \u0443\u0436\u0435 \u0431\u044b\u043b\u043e 2") in message
     assert "FinTablo manual: " + _ru(r"\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e 7, \u043a \u0441\u0432\u0435\u0440\u043a\u0435 2") in message
     assert _ru(r"\u26a0\ufe0f \u041d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c") in message
     assert "missing_payment_fields: 1" in message

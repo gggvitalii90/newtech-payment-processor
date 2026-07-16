@@ -76,7 +76,10 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         lines.append(
             f"{RECEIPT} FinTablo: "
             + _u(r"\u0431\u0435\u0437\u043d\u0430\u043b") + f" {fintablo_summary.get('noncash_updated', 0)}/{fintablo_summary.get('noncash_updates', 0)}, "
-            + _u(r"\u043d\u0430\u043b\u0438\u0447\u043a\u0430") + f" {fintablo_summary.get('cash_created', 0)}/{fintablo_summary.get('cash_missing', 0)}"
+            + _u(r"\u043d\u0430\u043b\u0438\u0447\u043a\u0430") + f" "
+            + _u(r"\u0432 \u0418\u0442\u043e\u0433\u043e\u0432\u043e\u0439") + f" {fintablo_summary.get('cash_final_rows', 0)}, "
+            + _u(r"\u0441\u043e\u0437\u0434\u0430\u043d\u043e") + f" {fintablo_summary.get('cash_created', 0)}/{fintablo_summary.get('cash_missing', 0)}, "
+            + _u(r"\u0443\u0436\u0435 \u0431\u044b\u043b\u043e") + f" {fintablo_summary.get('cash_existing', 0)}"
         )
     if fintablo_income_summary or fintablo_expense_summary:
         lines.append(
