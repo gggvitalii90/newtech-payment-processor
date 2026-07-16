@@ -106,3 +106,42 @@ def test_fintablo_alfa_moneybag_maps_to_canonical_bank_name() -> None:
     )
 
     assert records[0].bank == u("\\u0431/\\u043d \\u0410\\u043b\\u044c\\u0444\\u0430")
+
+def test_fintablo_extracts_invoice_numbers_from_common_july_wordings() -> None:
+    transactions = [
+        {
+            "id": 10,
+            "date": "15.07.2026",
+            "group": "outcome",
+            "value": 30000,
+            "moneybagId": 1,
+            "description": "\u041e\u043a\u0430\u0437\u0430\u043d\u0438\u0435 \u0443\u0441\u043b\u0443\u0433 \u041a\u041c\u0414. \u0421\u0447\u0451\u0442 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443 \u211631542130 \u043e\u0442 15 \u0438\u044e\u043b\u044f 2026 \u0433. \u041d\u0414\u0421 \u043d\u0435 \u043e\u0431\u043b\u0430\u0433\u0430\u0435\u0442\u0441\u044f",
+        },
+        {
+            "id": 11,
+            "date": "15.07.2026",
+            "group": "outcome",
+            "value": 16457,
+            "moneybagId": 1,
+            "description": "\u0422\u041e. \u0421\u0447\u0435\u0442 \u043a \u0437\u0430\u043a\u0430\u0437-\u043d\u0430\u0440\u044f\u0434\u0443 \u21162253882-1 \u043e\u0442 15.07.2026\u0433.",
+        },
+        {
+            "id": 12,
+            "date": "15.07.2026",
+            "group": "outcome",
+            "value": 44000,
+            "moneybagId": 1,
+            "description": "\u0423\u0441\u043b\u0443\u0433\u0438 \u0438 \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0430. \u0421\u0447\u0435\u0442 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443 \u2116 32 \u043e\u0442 15.07.2026. \u041d\u0414\u0421 \u043d\u0435 \u043e\u0431\u043b\u0430\u0433\u0430\u0435\u0442\u0441\u044f",
+        },
+    ]
+
+    records = fintablo_transactions_to_payment_records(
+        transactions,
+        moneybags=[{"id": 1, "name": "\u041d\u042c\u042e\u0422\u0415\u041a \u0421\u0431\u0435\u0440 \u0440/\u0441 *5967", "type": "bank"}],
+        categories=[],
+        partners=[],
+        deals=[],
+        directions=[],
+    )
+
+    assert [record.invoice_number for record in records] == ["31542130", "2253882-1", "32"]

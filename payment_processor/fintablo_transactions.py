@@ -31,7 +31,8 @@ WITHOUT_VAT_KEY = normalize_key(_u("\\u0431\\u0435\\u0437 \\u041d\\u0414\\u0421"
 VAT_NOT_KEY = normalize_key(_u("\\u041d\\u0414\\u0421 \\u043d\\u0435"))
 VAT_5_RE = re.compile(_u(r"\\b\\u041d\\u0414\\u0421\\s*5\\s*%"), re.IGNORECASE)
 INVOICE_PATTERNS = [
-    re.compile(_u(r"\\u0441\\u0447\\u0435\\u0442\\s+\\u043d\\u0430\\s+\\u043e\\u043f\\u043b\\u0430\\u0442\\u0443\\s*(?:\\u2116|no|n)?\\s*([A-Za-z\\u0410-\\u042f\\u0430-\\u044f\\u0401\\u04510-9_./-]+)"), re.IGNORECASE),
+    re.compile(_u(r"\\u0441\\u0447[\\u0435\\u0451]\\u0442\\s+\\u043d\\u0430\\s+\\u043e\\u043f\\u043b\\u0430\\u0442\\u0443\\s*(?:\\u2116|no|n)?\\s*([A-Za-z\\u0410-\\u042f\\u0430-\\u044f\\u0401\\u04510-9_./-]+)"), re.IGNORECASE),
+    re.compile(_u(r"\\u0441\\u0447[\\u0435\\u0451]\\u0442\\s+\\u043a\\s+\\u0437\\u0430\\u043a\\u0430\\u0437[-\\u0430-\\u044f\\s]*\\s*(?:\\u2116|no|n)?\\s*([A-Za-z\\u0410-\\u042f\\u0430-\\u044f\\u0401\\u04510-9_./-]+)"), re.IGNORECASE),
     re.compile(_u(r"\\u0441\\u0447[\\u0435\\u0451]\\u0442\\s*(?:\\u2116|no|n)?\\s*([A-Za-z\\u0410-\\u042f\\u0430-\\u044f\\u0401\\u04510-9_./-]+)"), re.IGNORECASE),
     re.compile(_u(r"\\u043f\\u043e\\s+\\u0441\\u0447\\u0435\\u0442\\u0443\\s*(?:\\u2116|no|n)?\\s*([A-Za-z\\u0410-\\u042f\\u0430-\\u044f\\u0401\\u04510-9_./-]+)"), re.IGNORECASE),
 ]
@@ -200,9 +201,20 @@ def _extract_invoice_number(description: str) -> str:
     for pattern in INVOICE_PATTERNS:
         match = pattern.search(description)
         if match:
-            return match.group(1).strip(" .,")
+            value = match.group(1).strip(" .,")
+            if _is_bad_invoice_token(value):
+                continue
+            return value
     return ""
 
+
+def _is_bad_invoice_token(value: str) -> bool:
+    return normalize_key(value) in {
+        _u(r"\u043d\u0430"),
+        _u(r"\u043a"),
+        _u(r"\u043e\u043f\u043b\u0430\u0442\u0443"),
+        _u(r"\u0437\u0430\u043a\u0430\u0437"),
+    }
 
 def _amount(value: Any) -> str:
     text = str(value or "").replace(" ", "").replace(",", ".")
@@ -213,5 +225,6 @@ def _amount(value: Any) -> str:
     if number == number.to_integral():
         return str(number.quantize(Decimal("1")))
     return format(number.normalize(), "f")
+
 
 

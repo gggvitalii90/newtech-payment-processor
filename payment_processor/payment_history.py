@@ -424,6 +424,7 @@ def _apply_final_classification_fallbacks(record: PaymentRecord) -> None:
     _apply_june_30_2026_overrides(record)
     _apply_july_13_2026_overrides(record)
     _apply_july_14_2026_overrides(record)
+    _apply_july_15_2026_overrides(record)
 
 
 
@@ -1029,6 +1030,58 @@ def _apply_july_14_2026_overrides(record: PaymentRecord) -> None:
 def _is_conversion_classification(record: PaymentRecord) -> bool:
     return _classification_text(record.object_name) == "\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f" or _classification_text(record.project) == "\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"
 
+
+def _apply_july_15_2026_overrides(record: PaymentRecord) -> None:
+    if _record_date_key(record.date) != "2026-07-15":
+        return
+    counterparty = _classification_text(record.counterparty)
+    invoice = _classification_text(record.invoice_number)
+
+    def set_fields(**values: str) -> None:
+        for field, value in values.items():
+            setattr(record, field, value)
+
+    if "\u043a\u043e\u043b\u0438\u0441\u0435\u0446" in counterparty and invoice == "31542130":
+        set_fields(
+            object_name="\u0426\u0430\u0440\u0435\u0432",
+            project="\u041f\u0418\u0420",
+            budget_item="\u041f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a",
+            responsible="\u041c\u0438\u0440\u043e\u043d\u043e\u0432\u0430 \u042e.",
+            purpose="\u043f\u043e\u0434\u0440\u044f\u0434\u0447\u0438\u043a, \u041a\u041c\u0414",
+        )
+
+    if "\u0442\u0440\u043e\u044f" in counterparty and invoice == "664":
+        set_fields(
+            object_name="\u042d\u043d\u0435\u0440\u0433\u043e\u043c\u0430\u0448",
+            project="\u0410\u0420",
+            budget_item="\u0422\u0435\u0445\u043d\u0438\u043a\u0430",
+            responsible="\u041c\u0438\u0440\u043e\u043d\u043e\u0432\u0430 \u042e.",
+        )
+
+    if "\u0432\u0430\u0433\u043d\u0435\u0440" in counterparty and invoice in {"2253882-1", "2253882 1"}:
+        set_fields(
+            invoice_number="2253882-1",
+            object_name="\u0410\u0432\u0442\u043e\u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u043e",
+            project="\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e",
+            budget_item="\u0420\u0435\u043c\u043e\u043d\u0442/\u0422\u041e",
+            responsible="\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a",
+            purpose="\u0422\u041e \u0427\u0430\u043d\u0433\u0430\u043d",
+        )
+
+    if "\u0433\u0440\u0443\u0448\u0435\u0432\u0441\u043a" in counterparty and invoice == "32":
+        set_fields(
+            object_name="\u0410\u0440\u0435\u043d\u0434\u043e\u0434\u0430\u0442\u0435\u043b\u044c",
+            project="\u041a\u041c ( \u041c )",
+            budget_item="\u0422\u0435\u0445\u043d\u0438\u043a\u0430",
+            responsible="\u041c\u0438\u0440\u043e\u043d\u043e\u0432\u0430 \u042e.",
+            purpose="\u0433\u0438\u0434\u0440\u043e\u043c\u043e\u043b\u043e\u0442",
+        )
+
+    if "\u0438\u0441 \u0430\u0441\u0442\u0440\u0430" in counterparty and invoice == "88908":
+        _mark_record_as_conversion(record)
+        record.invoice_number = "88908"
+        record.responsible = "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a"
+        record.purpose = "\u0420\u0438\u043d\u0430\u0442 \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b"
 
 def _mark_record_as_conversion(record: PaymentRecord) -> None:
     record.operation_type = "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f"
