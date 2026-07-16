@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from .google_payments import FINAL_SHEET_NAME, PAYMENT_ARCHIVE_SHEET_NAME, delete_rows_for_dates, replace_final_rows, replace_payment_archive_rows, setup_payment_sheets, upsert_final_rows, upsert_payment_archive
+from .google_payments import FINAL_SHEET_NAME, PAYMENT_ARCHIVE_SHEET_NAME, delete_rows_for_dates, highlight_fintablo_final_rows, replace_final_rows, replace_payment_archive_rows, setup_payment_sheets, upsert_final_rows, upsert_payment_archive
 from .models import PaymentRecord
 
 
@@ -35,6 +35,7 @@ def write_google_history(
             sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name,
         )
         final_count = updated + appended
+        _highlight_fintablo_rows_if_supported(sheets_service, spreadsheet_id, final_sheet_name)
     else:
         if replace_payment_archive:
             payment_count = replace_payment_archive_rows(sheets_service, spreadsheet_id, payments)
@@ -42,4 +43,10 @@ def write_google_history(
             updated, appended = upsert_payment_archive(sheets_service, spreadsheet_id, payments)
             payment_count = updated + appended
         final_count = replace_final_rows(sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name)
+        _highlight_fintablo_rows_if_supported(sheets_service, spreadsheet_id, final_sheet_name)
     return payment_count, final_count
+
+def _highlight_fintablo_rows_if_supported(sheets_service, spreadsheet_id: str, final_sheet_name: str) -> None:
+    if not hasattr(sheets_service, "spreadsheets"):
+        return
+    highlight_fintablo_final_rows(sheets_service, spreadsheet_id, final_sheet_name)

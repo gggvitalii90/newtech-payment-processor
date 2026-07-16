@@ -12,6 +12,7 @@ from payment_processor.google_payments import (
     upsert_payment_archive,
     final_sheet_name_for_mode,
     final_row,
+    highlight_fintablo_final_rows,
 )
 from payment_processor.models import PaymentRecord
 
@@ -140,6 +141,27 @@ def test_upsert_writes_use_user_entered() -> None:
 
     assert sheets.values_api.batch_value_input_option == "USER_ENTERED"
     assert sheets.values_api.append_options[f"'{FINAL_SHEET_NAME}'!A1"] == "USER_ENTERED"
+
+
+def test_highlight_fintablo_final_rows_colors_income_and_expense() -> None:
+    sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
+    income = record("fintablo:income", "100")
+    income.operation_type = "\u041f\u0440\u0438\u0445\u043e\u0434"
+    expense = record("fintablo:expense", "200")
+    expense.operation_type = "\u0420\u0430\u0441\u0445\u043e\u0434"
+    ordinary = record("manual-row", "300")
+    ordinary.operation_type = "\u041f\u0440\u0438\u0445\u043e\u0434"
+    sheets.values_api.rows[FINAL_SHEET_NAME] = [final_row(income), final_row(expense), final_row(ordinary)]
+
+    assert highlight_fintablo_final_rows(sheets, "spreadsheet") == (1, 1)
+
+    colors = [
+        request["repeatCell"]["cell"]["userEnteredFormat"]["backgroundColor"]
+        for request in sheets.format_requests
+        if request.get("repeatCell", {}).get("fields") == "userEnteredFormat.backgroundColor"
+    ]
+    assert {"red": 0.86, "green": 0.96, "blue": 0.86} in colors
+    assert {"red": 1.0, "green": 0.91, "blue": 0.78} in colors
 
 class FakeRequest:
     def __init__(self, result): self.result = result

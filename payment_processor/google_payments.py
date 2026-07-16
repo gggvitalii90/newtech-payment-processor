@@ -11,6 +11,10 @@ FINAL_SHEET_NAME = "Итоговая"
 FINAL_IS_SHEET_NAME = "Итоговая ИС"
 PAYMENT_ARCHIVE_SHEET_NAME = "Архив ПП"
 FINAL_COLUMNS = ["№", *COLUMNS[1:]]
+FINTABLO_INCOME_FILL = {"red": 0.86, "green": 0.96, "blue": 0.86}
+FINTABLO_EXPENSE_FILL = {"red": 1.0, "green": 0.91, "blue": 0.78}
+OPERATION_INCOME = "\u041f\u0440\u0438\u0445\u043e\u0434"
+OPERATION_EXPENSE = "\u0420\u0430\u0441\u0445\u043e\u0434"
 PAYMENT_ARCHIVE_COLUMNS = [
     "№",
     "Дата",
@@ -123,6 +127,31 @@ def upsert_payment_archive(sheets_service, spreadsheet_id: str, records: Iterabl
         sheets_service, spreadsheet_id, PAYMENT_ARCHIVE_SHEET_NAME, records,
         PAYMENT_ARCHIVE_COLUMNS, "J", payment_archive_row, _archive_row_key,
     )
+
+
+def highlight_fintablo_final_rows(
+    sheets_service,
+    spreadsheet_id: str,
+    sheet_name: str = FINAL_SHEET_NAME,
+) -> tuple[int, int]:
+    response = sheets_service.spreadsheets().values().get(
+        spreadsheetId=spreadsheet_id,
+        range=f"'{sheet_name}'!A2:N",
+    ).execute()
+    income_rows: list[int] = []
+    expense_rows: list[int] = []
+    for offset, row in enumerate(response.get("values", []), start=2):
+        values = list(row) + [""] * len(FINAL_COLUMNS)
+        if not _normalize(values[0]).startswith("fintablo:"):
+            continue
+        operation = _normalize(values[2])
+        if operation == _normalize(OPERATION_INCOME):
+            income_rows.append(offset)
+        elif operation == _normalize(OPERATION_EXPENSE):
+            expense_rows.append(offset)
+    _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, income_rows, FINTABLO_INCOME_FILL)
+    _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, expense_rows, FINTABLO_EXPENSE_FILL)
+    return len(income_rows), len(expense_rows)
 
 
 def _replace_rows(
@@ -379,6 +408,48 @@ def _number_format_request(sheet_id: int, column_index: int, number_format: dict
             "fields": "userEnteredFormat.numberFormat",
         }
     }
+
+
+def _format_row_numbers(
+    sheets_service,
+    spreadsheet_id: str,
+    sheet_name: str,
+    row_numbers: list[int],
+    background_color: dict[str, float],
+) -> None:
+    if not row_numbers:
+        return
+    metadata = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    sheet_id = _sheet_ids(metadata)[sheet_name]
+    ranges: list[tuple[int, int]] = []
+    start = previous = row_numbers[0]
+    for row_number in row_numbers[1:]:
+        if row_number == previous + 1:
+            previous = row_number
+            continue
+        ranges.append((start, previous))
+        start = previous = row_number
+    ranges.append((start, previous))
+    requests = [
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": start_row - 1,
+                    "endRowIndex": end_row,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": len(FINAL_COLUMNS),
+                },
+                "cell": {"userEnteredFormat": {"backgroundColor": background_color}},
+                "fields": "userEnteredFormat.backgroundColor",
+            }
+        }
+        for start_row, end_row in ranges
+    ]
+    sheets_service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": requests},
+    ).execute()
 def _normalize(value: str) -> str:
     normalized = re.sub(r"\s+", " ", str(value or "").strip().lower().replace("\u0451", "\u0435"))
     for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
