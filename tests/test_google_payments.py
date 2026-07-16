@@ -115,6 +115,31 @@ def test_upsert_final_rows_accepts_extra_google_columns_without_clearing_history
     assert (updated, appended) == (0, 1)
     assert sheets.values_api.cleared == []
 
+def test_payment_sheet_writes_use_user_entered_and_type_formats() -> None:
+    sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
+    replace_final_rows(sheets, "spreadsheet", [record("typed.pdf", "1234,56")])
+
+    assert sheets.values_api.update_options[f"'{FINAL_SHEET_NAME}'!A1:N2"] == "USER_ENTERED"
+
+    setup_payment_sheets(sheets, "spreadsheet")
+    number_formats = [
+        request["repeatCell"]
+        for request in sheets.format_requests
+        if request.get("repeatCell", {}).get("fields") == "userEnteredFormat.numberFormat"
+    ]
+    assert any(item["range"]["startColumnIndex"] == 1 and item["cell"]["userEnteredFormat"]["numberFormat"]["type"] == "DATE" for item in number_formats)
+    assert any(item["range"]["startColumnIndex"] == len(FINAL_COLUMNS) - 1 and item["cell"]["userEnteredFormat"]["numberFormat"]["type"] == "NUMBER" for item in number_formats)
+
+
+def test_upsert_writes_use_user_entered() -> None:
+    sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
+    sheets.values_api.headers[FINAL_SHEET_NAME] = FINAL_COLUMNS
+    sheets.values_api.rows[FINAL_SHEET_NAME] = [final_row(record("same.pdf"))]
+
+    upsert_final_rows(sheets, "spreadsheet", [record("same.pdf", "200"), record("new.pdf", "300")])
+
+    assert sheets.values_api.batch_value_input_option == "USER_ENTERED"
+    assert sheets.values_api.append_options[f"'{FINAL_SHEET_NAME}'!A1"] == "USER_ENTERED"
 
 class FakeRequest:
     def __init__(self, result): self.result = result
@@ -124,6 +149,7 @@ class FakeRequest:
 class FakeValues:
     def __init__(self):
         self.headers = {}; self.rows = {}; self.updated = {}; self.batch_updated = {}; self.appended = {}; self.cleared = []
+        self.update_options = {}; self.append_options = {}; self.batch_value_input_option = None
     @staticmethod
     def _sheet(range_name: str) -> str: return range_name.split("'", 2)[1]
     def get(self, spreadsheetId, range):
@@ -131,13 +157,16 @@ class FakeValues:
         values = ([self.headers[title]] if title in self.headers else []) if "A1:" in range else self.rows.get(title, [])
         return FakeRequest({"values": values})
     def update(self, spreadsheetId, range, valueInputOption, body):
+        self.update_options[range] = valueInputOption
         self.updated[range] = body["values"]
         title = self._sheet(range)
         if range.endswith(("1:N1", "1:J1")): self.headers[title] = body["values"][0]
         return FakeRequest({})
     def append(self, spreadsheetId, range, valueInputOption, insertDataOption, body):
+        self.append_options[range] = valueInputOption
         self.appended[range] = body["values"]; return FakeRequest({})
     def batchUpdate(self, spreadsheetId, body):
+        self.batch_value_input_option = body.get("valueInputOption")
         for item in body["data"]:
             self.batch_updated[item["range"]] = item["values"]
         return FakeRequest({})

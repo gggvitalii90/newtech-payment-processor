@@ -235,7 +235,7 @@ def _upsert_rows(
         sheets_service.spreadsheets().values().append(
             spreadsheetId=spreadsheet_id,
             range=f"'{sheet_name}'!A1",
-            valueInputOption="RAW",
+            valueInputOption="USER_ENTERED",
             insertDataOption="INSERT_ROWS",
             body={"values": new_rows},
         ).execute()
@@ -323,7 +323,7 @@ def _write_values(sheets_service, spreadsheet_id: str, range_name: str, values: 
     sheets_service.spreadsheets().values().update(
         spreadsheetId=spreadsheet_id,
         range=range_name,
-        valueInputOption="RAW",
+        valueInputOption="USER_ENTERED",
         body={"values": values},
     ).execute()
 
@@ -338,7 +338,7 @@ def _batch_update_values(
     sheets_service.spreadsheets().values().batchUpdate(
         spreadsheetId=spreadsheet_id,
         body={
-            "valueInputOption": "RAW",
+            "valueInputOption": "USER_ENTERED",
             "data": [
                 {"range": range_name, "values": values}
                 for range_name, values in updates
@@ -355,14 +355,30 @@ def _sheet_ids(metadata: dict) -> dict[str, int]:
 
 
 def _format_requests(sheet_id: int, column_count: int) -> list[dict]:
+    amount_column_index = column_count - 1
     return [
         {"updateSheetProperties": {"properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
         {"setBasicFilter": {"filter": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": column_count}}}},
         {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.9, "green": 0.9, "blue": 0.9}, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
         {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 1, "green": 1, "blue": 1}, "textFormat": {"bold": False}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+        _number_format_request(sheet_id, 1, {"type": "DATE", "pattern": "dd.mm.yyyy"}),
+        _number_format_request(sheet_id, amount_column_index, {"type": "NUMBER", "pattern": "#,##0.00"}),
     ]
 
 
+def _number_format_request(sheet_id: int, column_index: int, number_format: dict) -> dict:
+    return {
+        "repeatCell": {
+            "range": {
+                "sheetId": sheet_id,
+                "startRowIndex": 1,
+                "startColumnIndex": column_index,
+                "endColumnIndex": column_index + 1,
+            },
+            "cell": {"userEnteredFormat": {"numberFormat": number_format}},
+            "fields": "userEnteredFormat.numberFormat",
+        }
+    }
 def _normalize(value: str) -> str:
     normalized = re.sub(r"\s+", " ", str(value or "").strip().lower().replace("\u0451", "\u0435"))
     for fmt in ("%d.%m.%Y", "%Y-%m-%d"):

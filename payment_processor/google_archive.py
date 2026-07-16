@@ -58,6 +58,7 @@ def setup_archive_sheet(sheets_service, spreadsheet_id: str, sheet_name: str) ->
             {"setBasicFilter": {"filter": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": len(headers)}}}},
             _validation_request(sheet_id, headers, "Статус оплаты", PAYMENT_STATUSES),
             _validation_request(sheet_id, headers, "Статус разбора", ANALYSIS_STATUSES),
+            *_archive_type_format_requests(sheet_id, headers),
         ]
     )
     _execute_google_request(sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": requests}))
@@ -110,7 +111,7 @@ def append_archive_records(sheets_service, spreadsheet_id: str, sheet_name: str,
             _execute_google_request(sheets_service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id,
                 range=f"'{sheet_name}'!A{row_number}:{_column_letter(len(headers))}{row_number}",
-                valueInputOption="RAW",
+                valueInputOption="USER_ENTERED",
                 body={"values": [row]},
             ))
             continue
@@ -122,7 +123,7 @@ def append_archive_records(sheets_service, spreadsheet_id: str, sheet_name: str,
         _execute_google_request(sheets_service.spreadsheets().values().append(
             spreadsheetId=spreadsheet_id,
             range=f"'{sheet_name}'!A1",
-            valueInputOption="RAW",
+            valueInputOption="USER_ENTERED",
             insertDataOption="INSERT_ROWS",
             body=body,
         ))
@@ -641,6 +642,34 @@ def _find_sheet(metadata: dict[str, Any], sheet_name: str) -> dict[str, Any] | N
             return sheet
     return None
 
+
+
+def _archive_type_format_requests(sheet_id: int, headers: list[str]) -> list[dict[str, Any]]:
+    formats = {
+        "Дата MAX": {"type": "DATE_TIME", "pattern": "dd.mm.yyyy hh:mm:ss"},
+        "Дата счета": {"type": "DATE", "pattern": "dd.mm.yyyy"},
+        "Сумма": {"type": "NUMBER", "pattern": "#,##0.00"},
+    }
+    return [
+        _number_format_request(sheet_id, headers.index(column_name), number_format)
+        for column_name, number_format in formats.items()
+        if column_name in headers
+    ]
+
+
+def _number_format_request(sheet_id: int, column_index: int, number_format: dict[str, str]) -> dict[str, Any]:
+    return {
+        "repeatCell": {
+            "range": {
+                "sheetId": sheet_id,
+                "startRowIndex": 1,
+                "startColumnIndex": column_index,
+                "endColumnIndex": column_index + 1,
+            },
+            "cell": {"userEnteredFormat": {"numberFormat": number_format}},
+            "fields": "userEnteredFormat.numberFormat",
+        }
+    }
 
 def _validation_request(sheet_id: int, headers: list[str], column_name: str, values: list[str]) -> dict[str, Any]:
     column_idx = headers.index(column_name)

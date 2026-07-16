@@ -5,6 +5,7 @@ from pathlib import Path
 from payment_processor.google_archive import (
     _folder_matches_month,
     append_archive_records,
+    setup_archive_sheet,
     cleanup_archive_duplicates,
     prepare_records_for_google_drive,
     read_archive_records,
@@ -397,10 +398,13 @@ class FakeSheetsValues:
     def __init__(self):
         self.append_body = None
         self.updated = []
+        self.update_options = []
+        self.append_options = []
         self.existing_values = []
         self.headers = list(INVOICE_ARCHIVE_COLUMNS)
 
     def append(self, spreadsheetId, range, valueInputOption, insertDataOption, body):
+        self.append_options.append(valueInputOption)
         self.append_body = body
         return FakeExecute({})
 
@@ -410,6 +414,7 @@ class FakeSheetsValues:
         return FakeExecute({"values": self.existing_values})
 
     def update(self, spreadsheetId, range, valueInputOption, body):
+        self.update_options.append(valueInputOption)
         self.updated.append({"range": range, "body": body})
         return FakeExecute({})
 
@@ -441,6 +446,28 @@ def test_append_archive_records_uses_record_rows() -> None:
     assert sheets.values_api.append_body["values"][0][INVOICE_ARCHIVE_COLUMNS.index("Статус оплаты")] == "Новый"
     assert len(sheets.values_api.append_body["values"][0]) == len(INVOICE_ARCHIVE_COLUMNS)
 
+def test_append_archive_records_uses_user_entered_for_typed_cells() -> None:
+    sheets = FakeSheets()
+
+    append_archive_records(sheets, "sheet", "Архив счетов", [make_record()])
+
+    assert sheets.values_api.append_options == ["USER_ENTERED"]
+
+
+def test_setup_archive_sheet_formats_date_and_amount_columns() -> None:
+    sheets = FakeSheets()
+
+    setup_archive_sheet(sheets, "sheet", "Архив счетов")
+
+    number_format_requests = [
+        request["repeatCell"]
+        for request in sheets.batch_requests
+        if request.get("repeatCell", {}).get("fields") == "userEnteredFormat.numberFormat"
+    ]
+    by_column = {item["range"]["startColumnIndex"]: item["cell"]["userEnteredFormat"]["numberFormat"]["type"] for item in number_format_requests}
+    assert by_column[INVOICE_ARCHIVE_COLUMNS.index("Дата MAX")] == "DATE_TIME"
+    assert by_column[INVOICE_ARCHIVE_COLUMNS.index("Дата счета")] == "DATE"
+    assert by_column[INVOICE_ARCHIVE_COLUMNS.index("Сумма")] == "NUMBER"
 
 def test_read_archive_records_builds_records_from_sheet_rows() -> None:
     sheets = FakeSheets()
