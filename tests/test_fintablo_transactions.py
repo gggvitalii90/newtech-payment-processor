@@ -99,6 +99,16 @@ def test_fetch_fintablo_payment_records_loads_references_and_skips_cash_by_defau
     assert [record.name for record in records] == ["fintablo:1"]
 
 
+
+def test_fintablo_ip_rodin_tochka_moneybag_maps_to_specific_bank_name() -> None:
+    records = fintablo_transactions_to_payment_records(
+        [{"id": 4, "date": "16.07.2026", "group": "outcome", "value": 950, "moneybagId": 1}],
+        moneybags=[{"id": 1, "name": u("\\u0418\\u041f \\u0420\\u043e\\u0434\\u0438\\u043d \\u0440/\\u0441 \\u0422\\u043e\\u0447\\u043a\\u0430 *6988"), "type": "bank"}],
+        categories=[], partners=[], deals=[], directions=[],
+    )
+
+    assert records[0].bank == u("\\u0431/\\u043d \\u0418\\u041f \\u0420\\u043e\\u0434\\u0438\\u043d (\\u0422\\u043e\\u0447\\u043a\\u0430)")
+
 def test_fintablo_alfa_moneybag_maps_to_canonical_bank_name() -> None:
     records = fintablo_transactions_to_payment_records(
         [{"id": 3, "date": "03.07.2026", "group": "outcome", "value": 100, "moneybagId": 1}],

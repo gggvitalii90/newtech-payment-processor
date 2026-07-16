@@ -22,6 +22,7 @@ BANK_SBER = _u("\\u0431/\\u043d \\u0421\\u0431\\u0435\\u0440\\u0431\\u0430\\u043
 BANK_IP_MOCHALOV = _u("\\u0431/\\u043d \\u0418\\u041f \\u041c\\u043e\\u0447\\u0430\\u043b\\u043e\\u0432")
 BANK_INVESTSTROY = _u("\\u0431/\\u043d \\u0418\\u041d\\u0412\\u0415\\u0421\\u0422\\u0421\\u0422\\u0420\\u041e\\u0419")
 BANK_TOCHKA = _u("\\u0431/\\u043d \\u0422\\u043e\\u0447\\u043a\\u0430")
+BANK_IP_RODIN_TOCHKA = _u("\\u0431/\\u043d \\u0418\\u041f \\u0420\\u043e\\u0434\\u0438\\u043d (\\u0422\\u043e\\u0447\\u043a\\u0430)")
 BANK_ALFA = _u("\\u0431/\\u043d \\u0410\\u043b\\u044c\\u0444\\u0430")
 
 
@@ -199,6 +200,8 @@ def _bank_name(moneybag: dict[str, Any]) -> str:
         return BANK_INVESTSTROY
     if normalize_key(_u("\\u0421\\u0431\\u0435\\u0440")) in name:
         return BANK_SBER
+    if normalize_key(_u("\\u0418\\u041f \\u0420\\u043e\\u0434\\u0438\\u043d")) in name and normalize_key(_u("\\u0422\\u043e\\u0447\\u043a\\u0430")) in name:
+        return BANK_IP_RODIN_TOCHKA
     if normalize_key(_u("\\u0422\\u043e\\u0447\\u043a\\u0430")) in name:
         return BANK_TOCHKA
     if normalize_key(_u("\\u0410\\u043b\\u044c\\u0444\\u0430")) in name:
