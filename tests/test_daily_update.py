@@ -19,6 +19,7 @@ def test_daily_commands_update_both_invoice_archives_before_payment_sheets():
         "scripts/backfill_payment_history.py",
         "scripts/backfill_payment_history.py",
         "scripts/fintablo_append_income_to_google.py",
+        "scripts/fintablo_append_expenses_to_google.py",
         "scripts/fintablo_sync_daily.py",
         "scripts/fintablo_sync_from_manual_final.py",
     ]
@@ -47,12 +48,14 @@ def test_daily_dry_run_uses_local_invoice_build_and_does_not_write_sheets():
     assert "--apply" not in commands[4]
     assert "--apply" not in commands[5]
     assert "--apply" not in commands[6]
+    assert "--apply" not in commands[7]
 
 
 def test_daily_live_run_applies_fintablo_sync_after_google_update():
     commands = build_daily_commands(date(2026, 7, 10), Path("stage"), dry_run=False)
 
-    income_command = commands[-3]
+    income_command = commands[-4]
+    expense_command = commands[-3]
     command = commands[-2]
     manual_command = commands[-1]
 
@@ -60,6 +63,10 @@ def test_daily_live_run_applies_fintablo_sync_after_google_update():
     assert income_command[income_command.index("--start") + 1] == "2026-07-10"
     assert income_command[income_command.index("--end") + 1] == "2026-07-10"
     assert "--apply" in income_command
+    assert expense_command[1] == "scripts/fintablo_append_expenses_to_google.py"
+    assert expense_command[expense_command.index("--start") + 1] == "2026-07-10"
+    assert expense_command[expense_command.index("--end") + 1] == "2026-07-10"
+    assert "--apply" in expense_command
     assert command[1] == "scripts/fintablo_sync_daily.py"
     assert command[command.index("--start") + 1] == "2026-07-10"
     assert command[command.index("--end") + 1] == "2026-07-10"

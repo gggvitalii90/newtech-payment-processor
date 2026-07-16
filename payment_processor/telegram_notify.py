@@ -49,6 +49,7 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
     max_summary = _sum_key_value_stdout(_steps_for_script(report, "backfill_max_archive.py"))
     payment_summary = _sum_json_stdout(_steps_for_script(report, "backfill_payment_history.py"))
     fintablo_income_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_append_income_to_google.py"))
+    fintablo_expense_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_append_expenses_to_google.py"))
     fintablo_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_sync_daily.py"))
     manual_fintablo_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_sync_from_manual_final.py"))
     issues = _sum_issues(payment_summary)
@@ -77,10 +78,11 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
             + _u(r"\u0431\u0435\u0437\u043d\u0430\u043b") + f" {fintablo_summary.get('noncash_updated', 0)}/{fintablo_summary.get('noncash_updates', 0)}, "
             + _u(r"\u043d\u0430\u043b\u0438\u0447\u043a\u0430") + f" {fintablo_summary.get('cash_created', 0)}/{fintablo_summary.get('cash_missing', 0)}"
         )
-    if fintablo_income_summary:
+    if fintablo_income_summary or fintablo_expense_summary:
         lines.append(
             f"{RECEIPT} FinTablo -> Google: "
-            + _u(r"\u043f\u0440\u0438\u0445\u043e\u0434\u044b") + f" {fintablo_income_summary.get('google_income_appended', 0)}/{fintablo_income_summary.get('google_income_missing', 0)}"
+            + _u(r"\u043f\u0440\u0438\u0445\u043e\u0434\u044b") + f" {fintablo_income_summary.get('google_income_appended', 0)}/{fintablo_income_summary.get('google_income_missing', 0)}, "
+            + _u(r"\u0440\u0430\u0441\u0445\u043e\u0434\u044b") + f" {fintablo_expense_summary.get('google_expense_appended', 0)}/{fintablo_expense_summary.get('google_expense_missing', 0)}"
         )
     if manual_fintablo_summary:
         lines.append(
