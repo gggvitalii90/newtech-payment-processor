@@ -54,9 +54,10 @@ def build_period_commands(start: date, end: date, staging_root: Path, dry_run: b
     if not dry_run:
         income_command.append("--apply")
     commands.append(income_command)
+    expense_start_text = date(end.year, end.month, 1).isoformat()
     expense_command = [
         sys.executable, "scripts/fintablo_append_expenses_to_google.py",
-        "--start", start_text, "--end", end_text,
+        "--start", expense_start_text, "--end", end_text,
     ]
     if not dry_run:
         expense_command.append("--apply")

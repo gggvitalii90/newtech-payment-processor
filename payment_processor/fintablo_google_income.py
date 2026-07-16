@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import re
+from calendar import monthrange
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
@@ -112,12 +113,43 @@ def append_missing_fintablo_expenses(
     ]
     incoming = aggregate_google_expense_records([record for record in all_expenses if is_safe_fintablo_expense_for_google(record)])
     existing_rows = _read_sheet_rows(sheets_service, spreadsheet_id, sheet_name)
-    missing = find_missing_income_records(incoming, [PaymentRecord.from_row(row) for row in existing_rows])
+    existing_records = [PaymentRecord.from_row(row) for row in existing_rows]
+    existing_summary_rows = _existing_expense_summary_rows(existing_rows)
+    summary_records = [record for record in incoming if _is_expense_summary_record(record)]
+    passthrough_records = [record for record in incoming if not _is_expense_summary_record(record)]
+    summaries_to_append = [
+        record for record in summary_records
+        if _normalize(record.name) not in existing_summary_rows
+    ]
+    summaries_to_update = [
+        record for record in summary_records
+        if _normalize(record.name) in existing_summary_rows
+    ]
+    missing = [
+        *summaries_to_append,
+        *find_missing_income_records(passthrough_records, existing_records),
+    ]
     appended = 0
+    updated = 0
+    updated_rows: list[int] = []
+    if apply and summaries_to_update:
+        updates = []
+        for record in summaries_to_update:
+            row_number = existing_summary_rows[_normalize(record.name)]
+            updates.append((f"'{sheet_name}'!A{row_number}:N{row_number}", [final_row(record)]))
+            updated_rows.append(row_number)
+        _batch_update_sheet_values(sheets_service, spreadsheet_id, updates)
+        _highlight_row_numbers(sheets_service, spreadsheet_id, sheet_name, updated_rows, color=PALE_ORANGE)
+        updated = len(summaries_to_update)
     if apply and missing:
         start_row, end_row = _append_final_rows(sheets_service, spreadsheet_id, sheet_name, missing)
         _highlight_rows(sheets_service, spreadsheet_id, sheet_name, start_row, end_row, color=PALE_ORANGE)
         appended = len(missing)
+    legacy_row_numbers = _legacy_expense_summary_source_row_numbers(existing_rows, summary_records)
+    legacy_removed = 0
+    if apply and legacy_row_numbers:
+        _delete_sheet_rows(sheets_service, spreadsheet_id, sheet_name, legacy_row_numbers)
+        legacy_removed = len(legacy_row_numbers)
     highlighted = highlight_existing_fintablo_expense_rows(
         sheets_service,
         spreadsheet_id,
@@ -130,6 +162,8 @@ def append_missing_fintablo_expenses(
         "google_expense_existing": len(incoming) - len(missing),
         "google_expense_missing": len(missing),
         "google_expense_appended": appended,
+        "google_expense_updated": updated,
+        "google_expense_legacy_removed": legacy_removed,
         "google_expense_highlighted": highlighted,
     }
 
@@ -212,6 +246,88 @@ def _read_sheet_rows(sheets_service: Any, spreadsheet_id: str, sheet_name: str) 
         valueRenderOption="FORMATTED_VALUE",
     ).execute()
     return response.get("values", [])
+
+
+def _existing_expense_summary_rows(rows: Iterable[list[str]]) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for index, row in enumerate(rows, start=2):
+        name = _normalize((list(row) + [""])[0])
+        if name.startswith("fintablo:expense-summary:"):
+            result[name] = index
+    return result
+
+
+def _is_expense_summary_record(record: PaymentRecord) -> bool:
+    return _normalize(record.name).startswith("fintablo:expense-summary:")
+
+
+def _legacy_expense_summary_source_row_numbers(
+    rows: Iterable[list[str]],
+    summary_records: Iterable[PaymentRecord],
+) -> list[int]:
+    summary_keys = {_expense_summary_key(record) for record in summary_records}
+    result: list[int] = []
+    for index, row in enumerate(rows, start=2):
+        record = PaymentRecord.from_row(row)
+        name = _normalize(record.name)
+        if not name.startswith("fintablo:") or name.startswith("fintablo:expense-summary:"):
+            continue
+        if _normalize(record.budget_item) not in AGGREGATED_EXPENSE_CATEGORY_KEYS:
+            continue
+        if _expense_summary_key(record) in summary_keys:
+            result.append(index)
+    return result
+
+
+def _expense_summary_key(record: PaymentRecord) -> tuple[str, str, str, str]:
+    record_date = _parse_record_date(record.date)
+    month = record_date.strftime("%Y-%m") if record_date else _normalize(record.date)
+    return (month, _normalize(record.bank), _normalize(record.budget_item), _normalize(record.payment_type))
+
+
+def _batch_update_sheet_values(
+    sheets_service: Any,
+    spreadsheet_id: str,
+    updates: list[tuple[str, list[list[str]]]],
+) -> None:
+    if not updates:
+        return
+    sheets_service.spreadsheets().values().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={
+            "valueInputOption": "USER_ENTERED",
+            "data": [{"range": range_name, "values": values} for range_name, values in updates],
+        },
+    ).execute()
+
+
+def _delete_sheet_rows(
+    sheets_service: Any,
+    spreadsheet_id: str,
+    sheet_name: str,
+    row_numbers: list[int],
+) -> None:
+    if not row_numbers:
+        return
+    metadata = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    sheet_id = _sheet_ids(metadata)[sheet_name]
+    requests = [
+        {
+            "deleteDimension": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "ROWS",
+                    "startIndex": row_number - 1,
+                    "endIndex": row_number,
+                }
+            }
+        }
+        for row_number in sorted(set(row_numbers), reverse=True)
+    ]
+    sheets_service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": requests},
+    ).execute()
 
 
 def _append_final_rows(
@@ -323,7 +439,7 @@ def aggregate_google_expense_records(records: Iterable[PaymentRecord]) -> list[P
 def _aggregate_expense_group(records: list[PaymentRecord]) -> PaymentRecord:
     dates = [_parse_record_date(record.date) for record in records]
     date_values = [value for value in dates if value is not None]
-    row_date = max(date_values).strftime("%d.%m.%Y") if date_values else records[0].date
+    row_date = _month_end(date_values).strftime("%d.%m.%Y") if date_values else records[0].date
     first = records[0]
     total = sum((_decimal_amount(record.amount) for record in records), Decimal("0"))
     month_text = (max(date_values).strftime("%m.%Y") if date_values else str(first.date or "").strip())
@@ -349,6 +465,11 @@ def _aggregate_expense_group(records: list[PaymentRecord]) -> PaymentRecord:
         invoice_link="",
         amount=_format_decimal(total),
     )
+
+
+def _month_end(values: list[date]) -> date:
+    last = max(values)
+    return date(last.year, last.month, monthrange(last.year, last.month)[1])
 
 
 def _default_object_for_bank(bank: str) -> str:

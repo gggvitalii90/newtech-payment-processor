@@ -32,8 +32,9 @@ def test_daily_commands_update_both_invoice_archives_before_payment_sheets():
 def test_period_commands_use_requested_start_and_end():
     commands = build_period_commands(date(2026, 6, 29), date(2026, 6, 30), Path("stage"), dry_run=False)
 
-    for command in commands[:-1]:
-        assert command[command.index("--start") + 1] == "2026-06-29"
+    for index, command in enumerate(commands[:-1]):
+        expected_start = "2026-06-01" if index == 5 else "2026-06-29"
+        assert command[command.index("--start") + 1] == expected_start
         assert command[command.index("--end") + 1] == "2026-06-30"
     assert commands[-1][commands[-1].index("--start") + 1] == "29.06.2026"
     assert commands[-1][commands[-1].index("--end") + 1] == "30.06.2026"
@@ -64,7 +65,7 @@ def test_daily_live_run_applies_fintablo_sync_after_google_update():
     assert income_command[income_command.index("--end") + 1] == "2026-07-10"
     assert "--apply" in income_command
     assert expense_command[1] == "scripts/fintablo_append_expenses_to_google.py"
-    assert expense_command[expense_command.index("--start") + 1] == "2026-07-10"
+    assert expense_command[expense_command.index("--start") + 1] == "2026-07-01"
     assert expense_command[expense_command.index("--end") + 1] == "2026-07-10"
     assert "--apply" in expense_command
     assert command[1] == "scripts/fintablo_sync_daily.py"

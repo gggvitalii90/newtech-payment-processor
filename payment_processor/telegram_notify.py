@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import json
@@ -84,7 +84,9 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         lines.append(
             f"{RECEIPT} FinTablo -> Google: "
             + _u(r"\u043f\u0440\u0438\u0445\u043e\u0434\u044b") + f" {fintablo_income_summary.get('google_income_appended', 0)}/{fintablo_income_summary.get('google_income_missing', 0)}, "
-            + _u(r"\u0440\u0430\u0441\u0445\u043e\u0434\u044b") + f" {fintablo_expense_summary.get('google_expense_appended', 0)}/{fintablo_expense_summary.get('google_expense_missing', 0)}"
+            + _u(r"\u0440\u0430\u0441\u0445\u043e\u0434\u044b") + f" {fintablo_expense_summary.get('google_expense_appended', 0)}/{fintablo_expense_summary.get('google_expense_missing', 0)}, "
+            + _u(r"\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e") + f" {fintablo_expense_summary.get('google_expense_updated', 0)}, "
+            + _u(r"\u0441\u0442\u0430\u0440\u044b\u0435 \u0441\u0442\u0440\u043e\u043a\u0438 \u0443\u0431\u0440\u0430\u043d\u043e") + f" {fintablo_expense_summary.get('google_expense_legacy_removed', 0)}"
         )
     if manual_fintablo_summary:
         lines.append(
