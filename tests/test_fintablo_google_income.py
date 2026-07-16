@@ -1,4 +1,4 @@
-from payment_processor.fintablo_google_income import find_missing_income_records
+from payment_processor.fintablo_google_income import find_missing_income_records, fintablo_income_row_numbers
 from payment_processor.models import PaymentRecord
 
 
@@ -39,3 +39,12 @@ def test_missing_income_skips_existing_business_row_even_without_fintablo_id() -
     incoming = [income_record("fintablo:123")]
 
     assert find_missing_income_records(incoming, existing) == []
+
+
+def test_fintablo_income_row_numbers_detects_existing_income_rows() -> None:
+    income = income_record("fintablo:123").as_row()
+    manual_income = income_record("manual-row").as_row()
+    expense = income_record("fintablo:124").as_row()
+    expense[2] = u(r"\u0420\u0430\u0441\u0445\u043e\u0434")
+
+    assert fintablo_income_row_numbers([income, manual_income, expense]) == [2]

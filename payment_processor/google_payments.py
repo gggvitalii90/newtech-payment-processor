@@ -360,7 +360,7 @@ def _format_requests(sheet_id: int, column_count: int) -> list[dict]:
         {"updateSheetProperties": {"properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
         {"setBasicFilter": {"filter": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": column_count}}}},
         {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.9, "green": 0.9, "blue": 0.9}, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
-        {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 1, "green": 1, "blue": 1}, "textFormat": {"bold": False}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+        {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"textFormat": {"bold": False}}}, "fields": "userEnteredFormat.textFormat.bold"}},
         _number_format_request(sheet_id, 1, {"type": "DATE", "pattern": "dd.mm.yyyy"}),
         _number_format_request(sheet_id, amount_column_index, {"type": "NUMBER", "pattern": "#,##0.00"}),
     ]

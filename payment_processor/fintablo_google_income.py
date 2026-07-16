@@ -57,11 +57,17 @@ def append_missing_fintablo_incomes(
         start_row, end_row = _append_final_rows(sheets_service, spreadsheet_id, sheet_name, missing)
         _highlight_rows(sheets_service, spreadsheet_id, sheet_name, start_row, end_row)
         appended = len(missing)
+    highlighted = highlight_existing_fintablo_income_rows(
+        sheets_service,
+        spreadsheet_id,
+        sheet_name=sheet_name,
+    ) if apply else 0
     return {
         "fintablo_income_records": len(incoming),
         "google_income_existing": len(incoming) - len(missing),
         "google_income_missing": len(missing),
         "google_income_appended": appended,
+        "google_income_highlighted": highlighted,
     }
 
 
@@ -86,6 +92,28 @@ def find_missing_income_records(
         if key:
             seen_keys.add(key)
     return result
+
+
+def fintablo_income_row_numbers(rows: Iterable[list[str]], *, first_row_number: int = 2) -> list[int]:
+    result: list[int] = []
+    for offset, row in enumerate(rows):
+        values = list(row) + [""] * len(FINAL_COLUMNS)
+        if _normalize(values[0]).startswith("fintablo:") and _same_text(values[2], OPERATION_INCOME):
+            result.append(first_row_number + offset)
+    return result
+
+
+def highlight_existing_fintablo_income_rows(
+    sheets_service: Any,
+    spreadsheet_id: str,
+    *,
+    sheet_name: str = FINAL_SHEET_NAME,
+) -> int:
+    rows = _read_sheet_rows(sheets_service, spreadsheet_id, sheet_name)
+    row_numbers = fintablo_income_row_numbers(rows)
+    if row_numbers:
+        _highlight_row_numbers(sheets_service, spreadsheet_id, sheet_name, row_numbers)
+    return len(row_numbers)
 
 
 def _read_sheet_rows(sheets_service: Any, spreadsheet_id: str, sheet_name: str) -> list[list[str]]:
@@ -125,6 +153,35 @@ def _highlight_rows(
     start_row: int,
     end_row: int,
 ) -> None:
+    _highlight_row_ranges(sheets_service, spreadsheet_id, sheet_name, [(start_row, end_row)])
+
+
+def _highlight_row_numbers(
+    sheets_service: Any,
+    spreadsheet_id: str,
+    sheet_name: str,
+    row_numbers: list[int],
+) -> None:
+    if not row_numbers:
+        return
+    ranges: list[tuple[int, int]] = []
+    start = previous = row_numbers[0]
+    for row_number in row_numbers[1:]:
+        if row_number == previous + 1:
+            previous = row_number
+            continue
+        ranges.append((start, previous))
+        start = previous = row_number
+    ranges.append((start, previous))
+    _highlight_row_ranges(sheets_service, spreadsheet_id, sheet_name, ranges)
+
+
+def _highlight_row_ranges(
+    sheets_service: Any,
+    spreadsheet_id: str,
+    sheet_name: str,
+    row_ranges: list[tuple[int, int]],
+) -> None:
     metadata = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
     sheet_id = _sheet_ids(metadata)[sheet_name]
     sheets_service.spreadsheets().batchUpdate(
@@ -144,6 +201,7 @@ def _highlight_rows(
                         "fields": "userEnteredFormat.backgroundColor",
                     }
                 }
+                for start_row, end_row in row_ranges
             ]
         },
     ).execute()
