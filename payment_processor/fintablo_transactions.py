@@ -67,13 +67,22 @@ def fintablo_transactions_to_payment_records(
 
 
 
-def fetch_fintablo_payment_records(client: Any, start: Any, end: Any, *, include_cash: bool = False) -> list[PaymentRecord]:
+def fetch_fintablo_payment_records(
+    client: Any,
+    start: Any,
+    end: Any,
+    *,
+    include_cash: bool = False,
+    include_transfers: bool = False,
+) -> list[PaymentRecord]:
     moneybags = client.list_moneybags()
     categories = client.list_categories()
     partners = client.list_partners()
     deals = client.list_deals()
     directions = client.list_directions()
     transactions = client.list_transactions(date_from=_fintablo_date(start), date_to=_fintablo_date(end))
+    if not include_transfers:
+        transactions = [tx for tx in transactions if str(tx.get("group") or "").strip() != "transfer"]
     if not include_cash:
         moneybag_by_id = _by_id(moneybags)
         transactions = [

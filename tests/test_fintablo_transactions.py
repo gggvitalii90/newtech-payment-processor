@@ -91,6 +91,7 @@ def test_fetch_fintablo_payment_records_loads_references_and_skips_cash_by_defau
             return [
                 {"id": 1, "date": "02.07.2026", "group": "outcome", "value": 10, "moneybagId": 1},
                 {"id": 2, "date": "02.07.2026", "group": "outcome", "value": 20, "moneybagId": 2},
+                {"id": 3, "date": "02.07.2026", "group": "transfer", "value": 30, "moneybagId": 1, "moneybag2Id": 2},
             ]
 
     records = fetch_fintablo_payment_records(FakeClient(), date(2026, 7, 2), date(2026, 7, 3))
@@ -145,3 +146,34 @@ def test_fintablo_extracts_invoice_numbers_from_common_july_wordings() -> None:
     )
 
     assert [record.invoice_number for record in records] == ["31542130", "2253882-1", "32"]
+
+
+def test_fetch_fintablo_payment_records_can_include_transfers_when_requested() -> None:
+    from datetime import date
+    from payment_processor.fintablo_transactions import fetch_fintablo_payment_records
+
+    class FakeClient:
+        def list_moneybags(self):
+            return [
+                {"id": 1, "name": u("\\u041d\\u042c\\u042e\\u0422\\u0415\\u041a \\u0421\\u0431\\u0435\\u0440"), "type": "bank"},
+                {"id": 2, "name": u("\\u0418\\u041f \\u041c\\u043e\\u0447_\\u0410\\u043b\\u044c\\u0444\\u0430_\\u0420\\u0430\\u0441\\u0447\\u0435\\u0442\\u043d\\u044b\\u0439 *0224"), "type": "bank"},
+            ]
+        def list_categories(self):
+            return []
+        def list_partners(self):
+            return []
+        def list_deals(self):
+            return []
+        def list_directions(self):
+            return []
+        def list_transactions(self, *, date_from, date_to):
+            return [
+                {"id": 3, "date": "02.07.2026", "group": "transfer", "value": 30, "moneybagId": 1, "moneybag2Id": 2},
+            ]
+
+    records = fetch_fintablo_payment_records(
+        FakeClient(), date(2026, 7, 2), date(2026, 7, 3), include_transfers=True
+    )
+
+    assert [record.name for record in records] == ["fintablo:3"]
+    assert records[0].operation_type == u("\\u041a\\u043e\\u043d\\u0432\\u0435\\u0440\\u0442\\u0430\\u0446\\u0438\\u044f")
