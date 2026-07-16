@@ -147,6 +147,22 @@ def test_payment_history_state_path_is_separate_for_each_mode() -> None:
     assert _state_path_for_mode(root, "\u0418\u0421") == root / "state_is.json"
 
 
+def test_fintablo_records_are_filtered_by_final_mode() -> None:
+    from scripts.backfill_payment_history import filter_fintablo_payment_records_for_mode
+
+    psk = PaymentRecord(
+        "fintablo:psk", "2026-07-16", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u0411\u0435\u0437\u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435 \u0441 \u041d\u0414\u0421", "\u0431/\u043d \u0421\u0431\u0435\u0440\u0431\u0430\u043d\u043a",
+        '\u041e\u041e\u041e "\u0421\u0422\u0414 \u041f\u0415\u0422\u0420\u041e\u0412\u0418\u0427"', "1", "\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a", "\u041e\u0444\u0438\u0441", "\u041c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b", "", "\u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b", "", "1000",
+    )
+    invest = PaymentRecord(
+        "fintablo:is", "2026-07-16", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u0411\u0435\u0437\u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435 \u0441 \u041d\u0414\u0421", "\u0431/\u043d \u0418\u041d\u0412\u0415\u0421\u0422\u0421\u0422\u0420\u041e\u0419",
+        '\u041e\u041e\u041e "\u041f\u041e\u041b\u0418\u041f\u041b\u0410\u0421\u0422"', "2", "", "", "", "", "\u0430\u0440\u0435\u043d\u0434\u0430", "", "2000",
+    )
+
+    assert filter_fintablo_payment_records_for_mode([psk, invest], "\u0418\u0421") == [invest]
+    assert filter_fintablo_payment_records_for_mode([psk, invest], "\u041f\u0421\u041a") == [psk]
+
+
 def test_build_final_history_matches_unique_invoice_by_amount_when_counterparty_is_bad() -> None:
     row = PaymentRecord(
         "payment.pdf", "2026-06-29", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u0411\u0435\u0437\u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435 \u0441 \u041d\u0414\u0421", "\u0431/\u043d \u0421\u0431\u0435\u0440\u0431\u0430\u043d\u043a",

@@ -21,13 +21,13 @@ def test_write_google_history_uses_requested_final_sheet() -> None:
         runner.setup_payment_sheets = lambda service, spreadsheet_id: calls.append(("setup", spreadsheet_id))
         runner.replace_payment_archive_rows = lambda service, spreadsheet_id, rows: 0
         runner.replace_final_rows = lambda service, spreadsheet_id, rows, sheet_name="????????": calls.append(("final", sheet_name, list(rows))) or 1
-        assert runner.write_google_history(FakeSheets(), "sheet", [], ["row"], final_sheet_name="???????? ??") == (0, 1)
+        assert runner.write_google_history(FakeSheets(), "sheet", [], ["row"], final_sheet_name="\u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f \u0418\u0421") == (0, 1)
     finally:
         runner.setup_payment_sheets = original_setup
         runner.replace_payment_archive_rows = original_archive
         runner.replace_final_rows = original_final
 
-    assert calls[-1] == ("final", "???????? ??", ["row"])
+    assert calls[-1] == ("final", "\u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f \u0418\u0421", ["row"])
 
 
 
@@ -72,3 +72,27 @@ def test_upsert_mode_does_not_delete_shared_payment_archive_dates(monkeypatch):
 
     assert len(deleted) == 1
     assert deleted[0][2] != runner.PAYMENT_ARCHIVE_SHEET_NAME
+
+
+def test_upsert_mode_can_clear_requested_final_dates_when_result_is_empty(monkeypatch):
+    import payment_processor.history_runner as runner
+
+    deleted = []
+    monkeypatch.setattr(runner, "setup_payment_sheets", lambda *_args: None)
+    monkeypatch.setattr(runner, "delete_rows_for_dates", lambda *_args: deleted.append(_args) or 2)
+    monkeypatch.setattr(runner, "upsert_payment_archive", lambda *_args: (0, 0))
+    monkeypatch.setattr(runner, "upsert_final_rows", lambda *_args, **_kwargs: (0, 0))
+
+    runner.write_google_history(
+        object(),
+        "sheet",
+        [],
+        [],
+        upsert=True,
+        final_sheet_name="\u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f \u0418\u0421",
+        replace_final_dates=["2026-07-14", "2026-07-15"],
+    )
+
+    assert len(deleted) == 1
+    assert deleted[0][2] == "\u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f \u0418\u0421"
+    assert deleted[0][3] == {"2026-07-14", "2026-07-15"}

@@ -15,6 +15,7 @@ def write_google_history(
     final_sheet_name: str = FINAL_SHEET_NAME,
     replace_payment_archive: bool = True,
     upsert: bool = False,
+    replace_final_dates: Iterable[str] | None = None,
 ) -> tuple[int, int]:
     if dry_run:
         return 0, 0
@@ -23,7 +24,10 @@ def write_google_history(
     setup_payment_sheets(sheets_service, spreadsheet_id)
     if upsert:
         payment_dates = {date for record in payments if (date := getattr(record, "date", ""))}
-        final_dates = {date for record in final if (date := getattr(record, "date", ""))}
+        if replace_final_dates is None:
+            final_dates = {date for record in final if (date := getattr(record, "date", ""))}
+        else:
+            final_dates = {str(date) for date in replace_final_dates if str(date or "").strip()}
         delete_rows_for_dates(sheets_service, spreadsheet_id, final_sheet_name, final_dates, "N")
         updated, appended = upsert_payment_archive(sheets_service, spreadsheet_id, payments)
         payment_count = updated + appended

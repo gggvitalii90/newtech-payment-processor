@@ -4,7 +4,7 @@ import argparse
 import json
 import logging
 from collections import Counter
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import sys
 
@@ -49,6 +49,29 @@ from payment_processor.payment_history import (
     write_history_issues_csv,
     write_payment_records_csv,
 )
+
+
+def _is_investstroy_payment_record(record) -> bool:
+    text = " ".join(
+        str(value or "")
+        for value in (
+            record.bank,
+            record.object_name,
+            record.counterparty,
+            record.purpose,
+        )
+    ).casefold().replace("\u0451", "\u0435")
+    return "\u0438\u043d\u0432\u0435\u0441\u0442\u0441\u0442\u0440\u043e\u0439" in text or "\u043f\u0441\u043a \u0438\u0441" in text
+
+
+def filter_fintablo_payment_records_for_mode(records, mode: str):
+    is_mode = (mode or "").strip().upper() in {"IS", "\u0418\u0421"}
+    result = []
+    for record in records:
+        record_is = _is_investstroy_payment_record(record)
+        if record_is == is_mode:
+            result.append(record)
+    return result
 
 
 def parse_args() -> argparse.Namespace:
@@ -185,10 +208,13 @@ def main() -> int:
     fintablo_payment_count = 0
     if args.payment_source == "fintablo":
         final_payment_records = dedupe_payment_records_by_identity(
-            fetch_fintablo_payment_records(
-                FinTabloClient(load_fintablo_settings(env)),
-                start_date,
-                end_date,
+            filter_fintablo_payment_records_for_mode(
+                fetch_fintablo_payment_records(
+                    FinTabloClient(load_fintablo_settings(env)),
+                    start_date,
+                    end_date,
+                ),
+                mode,
             )
         )
         fintablo_payment_count = len(final_payment_records)
@@ -302,6 +328,10 @@ def main() -> int:
         final_sheet_name=final_sheet_name_for_mode(mode),
         replace_payment_archive=(mode == "ПСК"),
         upsert=args.upsert,
+        replace_final_dates=(
+            (start_date + timedelta(days=offset)).isoformat()
+            for offset in range((end_date - start_date).days + 1)
+        ),
     )
     if args.dry_run:
         print("DRY RUN: Google-листы не изменялись.", flush=True)
