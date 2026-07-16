@@ -412,6 +412,13 @@ def _apply_final_classification_fallbacks(record: PaymentRecord) -> None:
         record.budget_item = record.budget_item or "\u0421\u0420\u041e"
         record.responsible = record.responsible or "\u041c\u043e\u0447\u0430\u043b\u043e\u0432.\u041a"
 
+    if "\u043f\u043f\u0440" in counterparty and (invoice == "77600100024090422" or "77600100024090422" in purpose):
+        record.object_name = record.object_name or "\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a"
+        record.project = record.project or "\u041e\u0444\u0438\u0441"
+        if not record.budget_item.strip() or budget in {"\u043d\u0435\u0440\u0430\u0437\u043d\u0435\u0441\u0435\u043d\u043d\u043e\u0435 \u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435", "\u0442\u043e\u043f\u043b\u0438\u0432\u043e"}:
+            record.budget_item = "\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u043e\u0444\u0438\u0441)"
+        record.responsible = record.responsible or "\u0420\u043e\u0434\u0438\u043d.\u041a"
+
     _apply_reference_cleanup(record)
     _apply_tax_and_salary_cleanup(record)
     _apply_unmatched_context_fallbacks(record)
@@ -1128,7 +1135,7 @@ def _is_expected_invoice_link_missing(record: PaymentRecord) -> bool:
     counterparty = _classification_text(record.counterparty)
     invoice = _classification_text(record.invoice_number)
     purpose = _classification_text(record.purpose)
-    if "\u043f\u043f\u0440" in counterparty and invoice == "77600100024090422":
+    if "\u043f\u043f\u0440" in counterparty and (invoice == "77600100024090422" or "77600100024090422" in purpose):
         return True
     if "\u043f\u043f\u0440" in counterparty and "\u043f\u043f\u0440" in purpose:
         return True

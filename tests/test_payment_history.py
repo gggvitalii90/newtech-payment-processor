@@ -575,6 +575,34 @@ def test_unmatched_invoice_issues_ignores_known_ppr_without_invoice() -> None:
     assert unmatched_invoice_issues([row], []) == []
 
 
+def test_final_history_classifies_known_ppr_fuel_payment_without_invoice_link() -> None:
+    row = PaymentRecord(
+        "fintablo:4789338",
+        "2026-07-16",
+        "\u0420\u0430\u0441\u0445\u043e\u0434",
+        "\u0411\u0435\u0437\u043d\u0430\u043b\u0438\u0447\u043d\u044b\u0435 \u0441 \u041d\u0414\u0421",
+        "\u0431/\u043d \u0421\u0431\u0435\u0440\u0431\u0430\u043d\u043a",
+        '\u041e\u041e\u041e "\u041f\u041f\u0420"',
+        "",
+        "",
+        "",
+        "\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u043e\u0444\u0438\u0441)",
+        "",
+        "\u041e\u043f\u043b\u0430\u0442\u0430 \u043f\u043e \u0434\u043e\u0433\u043e\u0432\u043e\u0440\u0443 \u211677600100024090422",
+        "",
+        "50000",
+    )
+
+    final, _ = build_final_history([row], [], [], [])
+
+    assert final[0].object_name == "\u041f\u0421\u041a \u041d\u044c\u044e\u0442\u0435\u043a"
+    assert final[0].project == "\u041e\u0444\u0438\u0441"
+    assert final[0].budget_item == "\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u043e\u0444\u0438\u0441)"
+    assert final[0].responsible == "\u0420\u043e\u0434\u0438\u043d.\u041a"
+    assert final[0].invoice_link == ""
+    assert unmatched_invoice_issues([row], []) == []
+
+
 def test_final_history_normalizes_reference_values_from_july_review() -> None:
     rows = [
         PaymentRecord("km.pdf", "2026-07-06", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f", "", "", "", "\u041a\u0440\u0430\u0441\u043d\u043e\u0435 \u0417\u043d\u0430\u043c\u044f", "\u043a\u043c \u043c\u043e\u043d\u0442", "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430", "\u0420\u043e\u0434\u0438\u043d.\u041a", "\u0433\u0440\u0443\u0437\u043e\u0432\u0438\u043a\u043e\u0432", "", "4760"),
