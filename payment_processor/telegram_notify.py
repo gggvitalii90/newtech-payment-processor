@@ -75,11 +75,10 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
     if fintablo_summary:
         lines.append(
             f"{RECEIPT} FinTablo: "
-            + _u(r"\u0431\u0435\u0437\u043d\u0430\u043b") + f" {fintablo_summary.get('noncash_updated', 0)}/{fintablo_summary.get('noncash_updates', 0)}, "
-            + _u(r"\u043d\u0430\u043b\u0438\u0447\u043a\u0430") + f" "
-            + _u(r"\u0432 \u0418\u0442\u043e\u0433\u043e\u0432\u043e\u0439") + f" {fintablo_summary.get('cash_final_rows', 0)}, "
-            + _u(r"\u0441\u043e\u0437\u0434\u0430\u043d\u043e") + f" {fintablo_summary.get('cash_created', 0)}/{fintablo_summary.get('cash_missing', 0)}, "
-            + _u(r"\u0443\u0436\u0435 \u0431\u044b\u043b\u043e") + f" {fintablo_summary.get('cash_existing', 0)}"
+            + _u(r"\u0431\u0435\u0437\u043d\u0430\u043b \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d") + f" {fintablo_summary.get('noncash_updated', 0)}/{fintablo_summary.get('noncash_updates', 0)}, "
+            + _u(r"\u043d\u0430\u043b\u0438\u0447\u043a\u0430 \u0441\u043e\u0437\u0434\u0430\u043d\u0430") + f" {fintablo_summary.get('cash_created', 0)}, "
+            + _u(r"\u0443\u0436\u0435 \u0431\u044b\u043b\u043e") + f" {fintablo_summary.get('cash_existing', 0)}, "
+            + _u(r"\u043e\u0448\u0438\u0431\u043e\u043a") + f" {fintablo_summary.get('cash_errors', 0) + fintablo_summary.get('noncash_errors', 0)}"
         )
     if fintablo_income_summary or fintablo_expense_summary:
         lines.append(
@@ -116,9 +115,14 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         problems.append(f"FinTablo без строки в Итоговой: {fintablo_summary['noncash_no_match']}")
     if manual_fintablo_summary.get("update_errors", 0):
         problems.append(f"FinTablo manual errors: {manual_fintablo_summary['update_errors']}")
-    if problems:
+    detail_items = []
+    detail_items.extend(_format_check_item(item) for item in fintablo_summary.get("check_items", [])[:5])
+    detail_items.extend(_format_check_item(item) for item in manual_fintablo_summary.get("check_items", [])[:5])
+    detail_items = [item for item in detail_items if item]
+    if problems or detail_items:
         lines.append(f"{WARN} " + _u(r"\u041d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c"))
         lines.extend(_u(r"\u2022 ") + item for item in problems[:8])
+        lines.extend(_u(r"\u2022 ") + item for item in detail_items[:8])
     else:
         lines.append(f"{GREEN} " + _u(r"\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430: \u043f\u0440\u043e\u0431\u043b\u0435\u043c \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e"))
 
@@ -126,6 +130,27 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         lines.extend(["", f"{LINK} " + google_spreadsheet_link(spreadsheet_id)])
     lines.extend(["", f"{CLOCK} " + _u(r"\u0412\u0440\u0435\u043c\u044f \u0437\u0430\u043f\u0443\u0441\u043a\u0430") + f": {datetime.now().strftime('%d.%m.%Y %H:%M')}"])
     return "\n".join(lines)
+
+
+def _format_check_item(item: dict[str, Any]) -> str:
+    parts = []
+    item_id = item.get("id") or item.get("transaction_id")
+    if item_id:
+        parts.append(f"id={item_id}")
+    if item.get("manual"):
+        parts.append(f"manual={item.get('manual')}")
+    if item.get("date"):
+        parts.append(str(item.get("date")))
+    amount = item.get("amount") or item.get("value")
+    if amount not in (None, ""):
+        parts.append(str(amount))
+    reason = item.get("reason") or item.get("error") or item.get("action")
+    if reason:
+        parts.append(str(reason))
+    description = str(item.get("description") or item.get("purpose") or "").strip()
+    if description:
+        parts.append(description[:80])
+    return " | ".join(parts)
 
 
 def send_telegram_message(env: dict[str, str], text: str) -> bool:
@@ -229,6 +254,9 @@ def _sum_json_stdout(steps: list[dict[str, Any]]) -> dict[str, Any]:
                 current = totals.setdefault("issues", {})
                 for issue_key, issue_value in value.items():
                     current[issue_key] = int(current.get(issue_key, 0)) + int(issue_value)
+            elif key.endswith("_items") and isinstance(value, list):
+                current = totals.setdefault(key, [])
+                current.extend(item for item in value if isinstance(item, dict))
     return totals
 
 
@@ -237,14 +265,14 @@ def _last_json_object(value: str) -> dict[str, Any]:
     fallback: dict[str, Any] = {}
     for match in re.finditer(r"\{", value):
         try:
-            parsed, _end = decoder.raw_decode(value[match.start():])
+            parsed, end = decoder.raw_decode(value[match.start():])
         except json.JSONDecodeError:
             continue
         if not isinstance(parsed, dict):
             continue
-        if any(key in parsed for key in ("payment_records", "final_records", "matched_invoices", "noncash_updated", "cash_created", "cash_missing")):
-            return parsed
         fallback = parsed
+        if not value[match.start() + end :].strip():
+            return parsed
     return fallback
 
 

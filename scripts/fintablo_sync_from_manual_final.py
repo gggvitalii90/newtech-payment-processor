@@ -398,6 +398,29 @@ def main() -> int:
     cash_path = out / f"fintablo_missing_cash_{args.start.replace('.', '-')}_{args.end.replace('.', '-')}.csv"
     write_csv(updates_path, update_rows)
     write_csv(cash_path, missing_cash)
+    check_items = []
+    for row in update_rows:
+        if row.get("action") in {"no_match", "error", "skip_no_ids", "skip_no_category_payload"} or row.get("notes"):
+            check_items.append({
+                "type": "manual_update_check",
+                "id": row.get("transaction_id", ""),
+                "date": row.get("date", ""),
+                "amount": row.get("value", ""),
+                "description": row.get("description", ""),
+                "reason": row.get("error") or row.get("notes") or row.get("reason") or row.get("action"),
+                "manual": "{}:{}".format(row.get("manual_sheet", ""), row.get("manual_row", "")) if row.get("manual_sheet") else "",
+            })
+    for row in missing_cash:
+        if not str(row.get("action", "")).startswith("created"):
+            check_items.append({
+                "type": "manual_cash_check",
+                "date": row.get("date", ""),
+                "amount": row.get("value", ""),
+                "description": row.get("purpose", ""),
+                "reason": row.get("action", ""),
+                "manual": "{}:{}".format(row.get("manual_sheet", ""), row.get("manual_row", "")),
+            })
+
     summary = {
         "start": args.start,
         "end": args.end,
@@ -414,6 +437,7 @@ def main() -> int:
         "missing_cash": len(missing_cash),
         "updates_path": str(updates_path),
         "cash_path": str(cash_path),
+        "check_items": check_items[:10],
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0

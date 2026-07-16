@@ -69,3 +69,18 @@ def test_client_raises_on_http_error() -> None:
 
     with pytest.raises(FinTabloError, match="HTTP 401"):
         client.list_moneybags()
+
+
+def test_client_retries_transient_http_errors() -> None:
+    captured = []
+    client = FinTabloClient(
+        FinTabloSettings(token="secret", base_url="https://example.test"),
+        transport=make_transport([
+            (503, {}, {"status": 503, "statusText": "busy"}),
+            (200, {}, {"status": 200, "items": [{"id": 1}]}),
+        ], captured),
+        retry_delay_seconds=0,
+    )
+
+    assert client.list_moneybags() == [{"id": 1}]
+    assert len(captured) == 2

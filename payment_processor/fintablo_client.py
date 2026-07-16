@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
@@ -63,10 +64,14 @@ class FinTabloClient:
         *,
         timeout: int = 30,
         transport: Transport = default_transport,
+        max_retries: int = 3,
+        retry_delay_seconds: float = 10.0,
     ) -> None:
         self.settings = settings
         self.timeout = timeout
         self.transport = transport
+        self.max_retries = max(1, max_retries)
+        self.retry_delay_seconds = max(0.0, retry_delay_seconds)
 
     def list_categories(self, **params: Any) -> list[dict[str, Any]]:
         return self.get_all("/v1/category", params=params)
@@ -143,7 +148,7 @@ class FinTabloClient:
             },
             method="GET",
         )
-        status, headers, body = self.transport(request, self.timeout)
+        status, headers, body = self._send_with_retries(request)
         request_id = headers.get("X-Request-Id") or headers.get("x-request-id") or ""
         payload = _decode_payload(body)
         if status < 200 or status >= 300:
@@ -171,7 +176,7 @@ class FinTabloClient:
             headers=headers,
             method=method.upper(),
         )
-        status, response_headers, body = self.transport(request, self.timeout)
+        status, response_headers, body = self._send_with_retries(request)
         request_id = response_headers.get("X-Request-Id") or response_headers.get("x-request-id") or ""
         payload_data = _decode_payload(body)
         if status < 200 or status >= 300:
@@ -183,6 +188,24 @@ class FinTabloClient:
         if raw_items and not isinstance(raw_items, list):
             raise FinTabloError(f"FinTablo API returned non-list items for {path}; request_id={request_id}")
         return FinTabloResponse(status=int(payload_data.get("status") or status), items=raw_items, request_id=request_id)
+
+    def _send_with_retries(self, request: Request) -> tuple[int, dict[str, str], bytes]:
+        last_error: FinTabloError | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                status, headers, body = self.transport(request, self.timeout)
+            except FinTabloError as exc:
+                last_error = exc
+                if attempt >= self.max_retries:
+                    raise
+                time.sleep(self.retry_delay_seconds * attempt)
+                continue
+            if status not in {408, 429, 500, 502, 503, 504} or attempt >= self.max_retries:
+                return status, headers, body
+            time.sleep(self.retry_delay_seconds * attempt)
+        if last_error is not None:
+            raise last_error
+        raise FinTabloError("FinTablo API request failed after retries")
 
 
 def _decode_payload(body: bytes) -> dict[str, Any]:

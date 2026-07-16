@@ -57,10 +57,16 @@ class SyncResult:
     cash_missing: int = 0
     cash_created: int = 0
     cash_skipped: int = 0
+    cash_errors: int = 0
+    noncash_errors: int = 0
     errors: int = 0
+    check_items: list[dict[str, Any]] | None = None
 
-    def as_dict(self) -> dict[str, int]:
-        return self.__dict__.copy()
+    def as_dict(self) -> dict[str, Any]:
+        data = self.__dict__.copy()
+        if data.get("check_items") is None:
+            data["check_items"] = []
+        return data
 
 
 def parse_args() -> argparse.Namespace:
@@ -174,7 +180,7 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
     moneybags = by_id(client.list_moneybags())
     stage_ids = current_stage_ids(deals_list)
 
-    result = SyncResult(transactions=len(txs), final_rows=len(final_records))
+    result = SyncResult(transactions=len(txs), final_rows=len(final_records), check_items=[])
     report: list[dict[str, Any]] = []
 
     noncash_lines = [manual_line_from_record(record) for record in final_records if not record.payment_type.startswith(PAYMENT_CASH)]
@@ -205,8 +211,10 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
                 action = "updated"
             except Exception as exc:  # keep the daily report alive and explicit
                 result.errors += 1
+                result.noncash_errors += 1
                 action = "error"
                 error = str(exc)
+                result.check_items.append({"type": "fintablo_update_error", "id": tx.get("id"), "date": tx.get("date"), "amount": tx.get("value"), "description": tx.get("description", ""), "reason": error})
         report.append({"kind": "noncash", "id": tx.get("id"), "action": action, "reason": reason, "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes), "error": error, "date": tx.get("date"), "value": tx.get("value"), "description": tx.get("description", "")})
 
     existing_cash = {cash_key_from_tx(tx) for tx in txs if moneybags.get(int(tx.get("moneybagId") or 0), {}).get("type") == "nal"}
@@ -237,14 +245,18 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
         if cash_amount <= 0:
             action = "skip_zero_amount"
             result.cash_skipped += 1
+            result.check_items.append({"type": "cash_not_created", "date": record.date, "amount": record.amount, "description": record.purpose, "reason": "zero_or_negative_amount"})
         elif not cash_account_id:
             result.cash_missing += 1
             action = "skip_no_cash_moneybag"
             result.cash_skipped += 1
+            result.cash_errors += 1
+            result.check_items.append({"type": "cash_not_created", "date": record.date, "amount": record.amount, "description": record.purpose, "reason": "cash_moneybag_not_found"})
         elif group == "transfer":
             action = "skip_cash_transfer"
             result.cash_missing += 1
             result.cash_skipped += 1
+            result.check_items.append({"type": "cash_not_created", "date": record.date, "amount": record.amount, "description": record.purpose, "reason": "cash_transfer_needs_manual_mapping"})
         else:
             result.cash_missing += 1
         if action == "create" and apply:
@@ -254,8 +266,10 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
                 action = "created"
             except Exception as exc:
                 result.errors += 1
+                result.cash_errors += 1
                 action = "error"
                 error = str(exc)
+                result.check_items.append({"type": "cash_create_error", "date": record.date, "amount": record.amount, "description": record.purpose, "reason": error})
         report.append({"kind": "cash", "id": "", "action": action, "reason": "missing_cash", "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes), "error": error, "date": payload["date"], "value": payload["value"], "description": record.purpose})
 
     output.parent.mkdir(parents=True, exist_ok=True)
