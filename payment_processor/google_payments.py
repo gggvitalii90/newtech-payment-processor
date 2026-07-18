@@ -4,7 +4,7 @@ import re
 import time
 
 from googleapiclient.errors import HttpError
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable, Iterable
 
 from .models import COLUMNS, PaymentRecord
@@ -475,4 +475,12 @@ def _normalize(value: str) -> str:
             return datetime.strptime(normalized, fmt).date().isoformat()
         except ValueError:
             pass
+    # Google Sheets may return a date cell as its serial number (days since 1899-12-30).
+    # Treat valid date-range serials as dates so cleanup/upsert comparisons still work.
+    try:
+        serial = float(normalized)
+        if serial.is_integer() and 20000 <= serial <= 60000:
+            return (datetime(1899, 12, 30) + timedelta(days=int(serial))).date().isoformat()
+    except ValueError:
+        pass
     return normalized
