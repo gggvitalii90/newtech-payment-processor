@@ -147,6 +147,7 @@ def highlight_fintablo_final_rows(
     sheets_service,
     spreadsheet_id: str,
     sheet_name: str = FINAL_SHEET_NAME,
+    extra_names: set[str] | None = None,
 ) -> tuple[int, int]:
     response = _execute_google_request(sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
@@ -156,7 +157,10 @@ def highlight_fintablo_final_rows(
     expense_rows: list[int] = []
     for offset, row in enumerate(response.get("values", []), start=2):
         values = list(row) + [""] * len(FINAL_COLUMNS)
-        if not _normalize(values[0]).startswith("fintablo:"):
+        name = _normalize(values[0])
+        if not name.startswith("fintablo:"):
+            continue
+        if extra_names is not None and name not in extra_names:
             continue
         operation = _normalize(values[2])
         if operation == _normalize(OPERATION_INCOME):
