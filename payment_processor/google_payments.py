@@ -148,10 +148,10 @@ def highlight_fintablo_final_rows(
     spreadsheet_id: str,
     sheet_name: str = FINAL_SHEET_NAME,
 ) -> tuple[int, int]:
-    response = sheets_service.spreadsheets().values().get(
+    response = _execute_google_request(sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range=f"'{sheet_name}'!A2:N",
-    ).execute()
+    ))
     income_rows: list[int] = []
     expense_rows: list[int] = []
     for offset, row in enumerate(response.get("values", []), start=2):
@@ -201,10 +201,10 @@ def delete_rows_for_dates(
     targets = {_normalize(value) for value in dates if str(value or "").strip()}
     if not targets:
         return 0
-    response = sheets_service.spreadsheets().values().get(
+    response = _execute_google_request(sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range=f"'{sheet_name}'!A2:{last_column}",
-    ).execute()
+    ))
     rows = response.get("values", [])
     row_numbers = [
         index + 2
@@ -213,7 +213,7 @@ def delete_rows_for_dates(
     ]
     if not row_numbers:
         return 0
-    sheet_id = _sheet_ids(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute())[sheet_name]
+    sheet_id = _sheet_ids(_execute_google_request(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id)))[sheet_name]
     ranges: list[tuple[int, int]] = []
     start = previous = row_numbers[0]
     for number in row_numbers[1:]:
