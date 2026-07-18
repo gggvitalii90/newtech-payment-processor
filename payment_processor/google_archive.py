@@ -20,21 +20,21 @@ from .google_api import (
 from .invoice_archive import INVOICE_ARCHIVE_COLUMNS, InvoiceArchiveRecord
 
 
-PAYMENT_STATUSES = ["Новый", "Оплачен", "Подтвержден"]
-ANALYSIS_STATUSES = ["ОК", "Нужно разобрать", "Дубль", "Нет файла", "Ошибка загрузки"]
+PAYMENT_STATUSES = ["Р СњР С•Р Р†РЎвЂ№Р в„–", "Р С›Р С—Р В»Р В°РЎвЂЎР ВµР Р…", "Р СџР С•Р Т‘РЎвЂљР Р†Р ВµРЎР‚Р В¶Р Т‘Р ВµР Р…"]
+ANALYSIS_STATUSES = ["Р С›Р С™", "Р СњРЎС“Р В¶Р Р…Р С• РЎР‚Р В°Р В·Р С•Р В±РЎР‚Р В°РЎвЂљРЎРЉ", "Р вЂќРЎС“Р В±Р В»РЎРЉ", "Р СњР ВµРЎвЂљ РЎвЂћР В°Р в„–Р В»Р В°", "Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р В·Р В°Р С–РЎР‚РЎС“Р В·Р С”Р С‘"]
 MONTH_NAMES = {
-    1: ("январь", "января", "янв"),
-    2: ("февраль", "февраля", "фев"),
-    3: ("март", "марта", "мар"),
-    4: ("апрель", "апреля", "апр"),
-    5: ("май", "мая"),
-    6: ("июнь", "июня", "июн"),
-    7: ("июль", "июля", "июл"),
-    8: ("август", "августа", "авг"),
-    9: ("сентябрь", "сентября", "сен"),
-    10: ("октябрь", "октября", "окт"),
-    11: ("ноябрь", "ноября", "ноя"),
-    12: ("декабрь", "декабря", "дек"),
+    1: ("РЎРЏР Р…Р Р†Р В°РЎР‚РЎРЉ", "РЎРЏР Р…Р Р†Р В°РЎР‚РЎРЏ", "РЎРЏР Р…Р Р†"),
+    2: ("РЎвЂћР ВµР Р†РЎР‚Р В°Р В»РЎРЉ", "РЎвЂћР ВµР Р†РЎР‚Р В°Р В»РЎРЏ", "РЎвЂћР ВµР Р†"),
+    3: ("Р СР В°РЎР‚РЎвЂљ", "Р СР В°РЎР‚РЎвЂљР В°", "Р СР В°РЎР‚"),
+    4: ("Р В°Р С—РЎР‚Р ВµР В»РЎРЉ", "Р В°Р С—РЎР‚Р ВµР В»РЎРЏ", "Р В°Р С—РЎР‚"),
+    5: ("Р СР В°Р в„–", "Р СР В°РЎРЏ"),
+    6: ("Р С‘РЎР‹Р Р…РЎРЉ", "Р С‘РЎР‹Р Р…РЎРЏ", "Р С‘РЎР‹Р Р…"),
+    7: ("Р С‘РЎР‹Р В»РЎРЉ", "Р С‘РЎР‹Р В»РЎРЏ", "Р С‘РЎР‹Р В»"),
+    8: ("Р В°Р Р†Р С–РЎС“РЎРѓРЎвЂљ", "Р В°Р Р†Р С–РЎС“РЎРѓРЎвЂљР В°", "Р В°Р Р†Р С–"),
+    9: ("РЎРѓР ВµР Р…РЎвЂљРЎРЏР В±РЎР‚РЎРЉ", "РЎРѓР ВµР Р…РЎвЂљРЎРЏР В±РЎР‚РЎРЏ", "РЎРѓР ВµР Р…"),
+    10: ("Р С•Р С”РЎвЂљРЎРЏР В±РЎР‚РЎРЉ", "Р С•Р С”РЎвЂљРЎРЏР В±РЎР‚РЎРЏ", "Р С•Р С”РЎвЂљ"),
+    11: ("Р Р…Р С•РЎРЏР В±РЎР‚РЎРЉ", "Р Р…Р С•РЎРЏР В±РЎР‚РЎРЏ", "Р Р…Р С•РЎРЏ"),
+    12: ("Р Т‘Р ВµР С”Р В°Р В±РЎР‚РЎРЉ", "Р Т‘Р ВµР С”Р В°Р В±РЎР‚РЎРЏ", "Р Т‘Р ВµР С”"),
 }
 
 
@@ -49,15 +49,15 @@ def setup_archive_sheet(sheets_service, spreadsheet_id: str, sheet_name: str) ->
         sheet = _find_sheet(metadata, sheet_name)
         requests = []
     if sheet is None:
-        raise RuntimeError(f"Не удалось создать лист {sheet_name}")
+        raise RuntimeError(f"Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ РЎРѓР С•Р В·Р Т‘Р В°РЎвЂљРЎРЉ Р В»Р С‘РЎРѓРЎвЂљ {sheet_name}")
     sheet_id = sheet["properties"]["sheetId"]
     headers = _ensure_headers(sheets_service, spreadsheet_id, sheet_name)
     requests.extend(
         [
             {"updateSheetProperties": {"properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
             {"setBasicFilter": {"filter": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": len(headers)}}}},
-            _validation_request(sheet_id, headers, "Статус оплаты", PAYMENT_STATUSES),
-            _validation_request(sheet_id, headers, "Статус разбора", ANALYSIS_STATUSES),
+            _validation_request(sheet_id, headers, "Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ Р С•Р С—Р В»Р В°РЎвЂљРЎвЂ№", PAYMENT_STATUSES),
+            _validation_request(sheet_id, headers, "Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ РЎР‚Р В°Р В·Р В±Р С•РЎР‚Р В°", ANALYSIS_STATUSES),
             *_archive_type_format_requests(sheet_id, headers),
         ]
     )
@@ -213,17 +213,17 @@ def _descriptive_image_file_name(record: InvoiceArchiveRecord) -> str:
     except ValueError:
         pass
 
-    counterparty = re.sub(r'[«»"“”]', "", record.counterparty)
+    counterparty = re.sub(r'[Р’В«Р’В»"РІР‚СљРІР‚Сњ]', "", record.counterparty)
     counterparty = re.sub(r"\s+", " ", counterparty).strip()
-    parts = ["Счет"]
+    parts = ["Р РЋРЎвЂЎР ВµРЎвЂљ"]
     if record.invoice_number.strip():
-        parts.append(f"№{record.invoice_number.strip()}")
+        parts.append(f"РІвЂћвЂ“{record.invoice_number.strip()}")
     if invoice_date:
-        parts.extend(["от", invoice_date])
+        parts.extend(["Р С•РЎвЂљ", invoice_date])
     if counterparty:
         parts.append(counterparty)
     if len(parts) == 1:
-        fallback = re.sub(r"[^A-Za-z0-9]+", "", record.max_message_id)[-12:] or "из MAX"
+        fallback = re.sub(r"[^A-Za-z0-9]+", "", record.max_message_id)[-12:] or "Р С‘Р В· MAX"
         parts.append(fallback)
 
     stem = " ".join(parts)
@@ -246,12 +246,12 @@ def prepare_records_for_google_drive(
     for record in records:
         if not record.file_name:
             if not record.analysis_status:
-                record.analysis_status = "ОК"
+                record.analysis_status = "Р С›Р С™"
             continue
         source_file_name = record.file_name
         file_path = local_files_by_name.get(source_file_name)
         if not file_path or not file_path.exists():
-            record.analysis_status = "Нет файла"
+            record.analysis_status = "Р СњР ВµРЎвЂљ РЎвЂћР В°Р в„–Р В»Р В°"
             continue
         descriptive_name = _descriptive_image_file_name(record)
         if descriptive_name:
@@ -279,9 +279,9 @@ def prepare_records_for_google_drive(
             record.google_drive_link = upload_file_to_folder(drive_service, file_path, folder_id, file_name=record.file_name)
             _touch_drive_folder(drive_service, folder_id)
             if not record.analysis_status:
-                record.analysis_status = "ОК"
+                record.analysis_status = "Р С›Р С™"
         except Exception:
-            record.analysis_status = "Ошибка загрузки"
+            record.analysis_status = "Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р В·Р В°Р С–РЎР‚РЎС“Р В·Р С”Р С‘"
 
 
 def _touch_drive_folder(drive_service, folder_id: str) -> None:
@@ -454,7 +454,8 @@ def _read_headers(sheets_service, spreadsheet_id: str, sheet_name: str) -> list[
     response = sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range=f"'{sheet_name}'!A1:AZ1",
-    ).execute()
+    )
+    response = _execute_google_request(response)
     rows = response.get("values", [])
     if not rows:
         return []
@@ -465,7 +466,8 @@ def _read_existing_archive_rows(sheets_service, spreadsheet_id: str, sheet_name:
     response = sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range=f"'{sheet_name}'!A2:{_column_letter(column_count)}",
-    ).execute()
+    )
+    response = _execute_google_request(response)
     return response.get("values", [])
 
 
@@ -483,14 +485,14 @@ def _row_key(row: list[str], headers: list[str]) -> tuple[str, str, str, str, st
 
     message_id = value("MAX message_id")
     file_id = value("MAX file_id")
-    file_name = value("Имя файла")
-    purpose = value("Назначение")
-    amount = value("Сумма")
-    chat = value("Чат")
-    max_date = value("Дата MAX")
-    counterparty = value("Контрагент")
-    invoice_number = value("Номер счета")
-    invoice_date = value("Дата счета")
+    file_name = value("Р ВР СРЎРЏ РЎвЂћР В°Р в„–Р В»Р В°")
+    purpose = value("Р СњР В°Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р С‘Р Вµ")
+    amount = value("Р РЋРЎС“Р СР СР В°")
+    chat = value("Р В§Р В°РЎвЂљ")
+    max_date = value("Р вЂќР В°РЎвЂљР В° MAX")
+    counterparty = value("Р С™Р С•Р Р…РЎвЂљРЎР‚Р В°Р С–Р ВµР Р…РЎвЂљ")
+    invoice_number = value("Р СњР С•Р СР ВµРЎР‚ РЎРѓРЎвЂЎР ВµРЎвЂљР В°")
+    invoice_date = value("Р вЂќР В°РЎвЂљР В° РЎРѓРЎвЂЎР ВµРЎвЂљР В°")
     if not message_id and not file_id and not file_name:
         return None
     if file_name and invoice_number:
@@ -532,20 +534,20 @@ def _is_stale_empty_file_row(row: list[str], headers: list[str], incoming_scope:
         index = headers.index(column_name)
         return str(row[index]).strip() if len(row) > index else ""
 
-    if not value("Имя файла"):
+    if not value("Р ВР СРЎРЏ РЎвЂћР В°Р в„–Р В»Р В°"):
         return False
-    scope_key = (value("Поток"), value("Чат"), value("Дата MAX")[:10])
+    scope_key = (value("Р СџР С•РЎвЂљР С•Р С”"), value("Р В§Р В°РЎвЂљ"), value("Р вЂќР В°РЎвЂљР В° MAX")[:10])
     if scope_key not in incoming_scope:
         return False
     business_fields = [
-        "Контрагент",
-        "Номер счета",
-        "Дата счета",
-        "Объект",
-        "Проект",
-        "Статья бюджета",
-        "Назначение",
-        "Сумма",
+        "Р С™Р С•Р Р…РЎвЂљРЎР‚Р В°Р С–Р ВµР Р…РЎвЂљ",
+        "Р СњР С•Р СР ВµРЎР‚ РЎРѓРЎвЂЎР ВµРЎвЂљР В°",
+        "Р вЂќР В°РЎвЂљР В° РЎРѓРЎвЂЎР ВµРЎвЂљР В°",
+        "Р С›Р В±РЎР‰Р ВµР С”РЎвЂљ",
+        "Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ",
+        "Р РЋРЎвЂљР В°РЎвЂљРЎРЉРЎРЏ Р В±РЎР‹Р Т‘Р В¶Р ВµРЎвЂљР В°",
+        "Р СњР В°Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р С‘Р Вµ",
+        "Р РЋРЎС“Р СР СР В°",
     ]
     return not any(value(column) for column in business_fields)
 
@@ -557,7 +559,7 @@ def _row_in_scope(row: list[str], headers: list[str], scope: set[tuple[str, str,
         index = headers.index(column_name)
         return str(row[index]).strip() if len(row) > index else ""
 
-    return (value("Поток"), value("Чат"), value("Дата MAX")[:10]) in scope
+    return (value("Р СџР С•РЎвЂљР С•Р С”"), value("Р В§Р В°РЎвЂљ"), value("Р вЂќР В°РЎвЂљР В° MAX")[:10]) in scope
 
 
 def _cleanup_row_key(row: list[str], headers: list[str]) -> tuple[str, ...] | None:
@@ -567,15 +569,15 @@ def _cleanup_row_key(row: list[str], headers: list[str]) -> tuple[str, ...] | No
         index = headers.index(column_name)
         return str(row[index]).strip() if len(row) > index else ""
 
-    chat = value("Чат")
-    file_name = value("Имя файла")
-    max_date = value("Дата MAX")
-    counterparty = _normalize_sheet_key(value("Контрагент"))
-    invoice_number = _normalize_sheet_key(value("Номер счета"))
-    invoice_date = value("Дата счета")
-    project = _normalize_sheet_key(value("Проект"))
-    budget_item = _normalize_sheet_key(value("Статья бюджета"))
-    purpose = _normalize_sheet_key(value("Назначение"))
+    chat = value("Р В§Р В°РЎвЂљ")
+    file_name = value("Р ВР СРЎРЏ РЎвЂћР В°Р в„–Р В»Р В°")
+    max_date = value("Р вЂќР В°РЎвЂљР В° MAX")
+    counterparty = _normalize_sheet_key(value("Р С™Р С•Р Р…РЎвЂљРЎР‚Р В°Р С–Р ВµР Р…РЎвЂљ"))
+    invoice_number = _normalize_sheet_key(value("Р СњР С•Р СР ВµРЎР‚ РЎРѓРЎвЂЎР ВµРЎвЂљР В°"))
+    invoice_date = value("Р вЂќР В°РЎвЂљР В° РЎРѓРЎвЂЎР ВµРЎвЂљР В°")
+    project = _normalize_sheet_key(value("Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ"))
+    budget_item = _normalize_sheet_key(value("Р РЋРЎвЂљР В°РЎвЂљРЎРЉРЎРЏ Р В±РЎР‹Р Т‘Р В¶Р ВµРЎвЂљР В°"))
+    purpose = _normalize_sheet_key(value("Р СњР В°Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р С‘Р Вµ"))
     if file_name and invoice_number:
         return ("invoice", chat, invoice_number, invoice_date)
     if not file_name and (counterparty or invoice_number or project or budget_item or purpose):
@@ -591,7 +593,7 @@ def _exact_duplicate_row_key(row: list[str], headers: list[str]) -> tuple[str, .
     link_index = 17
     if len(headers) > 17:
         for index, header in enumerate(headers):
-            if "Drive" in header or "ссылка" in header.lower():
+            if "Drive" in header or "РЎРѓРЎРѓРЎвЂ№Р В»Р С”Р В°" in header.lower():
                 link_index = index
                 break
     if not padded[max_message_index] or not padded[link_index]:
@@ -606,28 +608,28 @@ def _sheet_row_quality(row: list[str], headers: list[str]) -> int:
         return str(row[index]).strip() if len(row) > index else ""
 
     fields = [
-        "Дата счета",
-        "Тип операции",
-        "Тип оплаты",
-        "Банк",
-        "Контрагент",
-        "Номер счета",
-        "Объект",
-        "Проект",
-        "Статья бюджета",
-        "Ответственный",
-        "Назначение",
-        "Google Drive ссылка",
-        "Сумма",
-        "Статус оплаты",
-        "Статус разбора",
+        "Р вЂќР В°РЎвЂљР В° РЎРѓРЎвЂЎР ВµРЎвЂљР В°",
+        "Р СћР С‘Р С— Р С•Р С—Р ВµРЎР‚Р В°РЎвЂ Р С‘Р С‘",
+        "Р СћР С‘Р С— Р С•Р С—Р В»Р В°РЎвЂљРЎвЂ№",
+        "Р вЂР В°Р Р…Р С”",
+        "Р С™Р С•Р Р…РЎвЂљРЎР‚Р В°Р С–Р ВµР Р…РЎвЂљ",
+        "Р СњР С•Р СР ВµРЎР‚ РЎРѓРЎвЂЎР ВµРЎвЂљР В°",
+        "Р С›Р В±РЎР‰Р ВµР С”РЎвЂљ",
+        "Р СџРЎР‚Р С•Р ВµР С”РЎвЂљ",
+        "Р РЋРЎвЂљР В°РЎвЂљРЎРЉРЎРЏ Р В±РЎР‹Р Т‘Р В¶Р ВµРЎвЂљР В°",
+        "Р С›РЎвЂљР Р†Р ВµРЎвЂљРЎРѓРЎвЂљР Р†Р ВµР Р…Р Р…РЎвЂ№Р в„–",
+        "Р СњР В°Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р С‘Р Вµ",
+        "Google Drive РЎРѓРЎРѓРЎвЂ№Р В»Р С”Р В°",
+        "Р РЋРЎС“Р СР СР В°",
+        "Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ Р С•Р С—Р В»Р В°РЎвЂљРЎвЂ№",
+        "Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ РЎР‚Р В°Р В·Р В±Р С•РЎР‚Р В°",
     ]
     return sum(1 for field in fields if value(field))
 
 
 def _normalize_sheet_key(value: str) -> str:
-    value = (value or "").lower().replace("ё", "е")
-    value = re.sub(r"[\"'«».,;:()№#]+", " ", value)
+    value = (value or "").lower().replace("РЎвЂ", "Р Вµ")
+    value = re.sub(r"[\"'Р’В«Р’В».,;:()РІвЂћвЂ“#]+", " ", value)
     value = re.sub(r"\s+", " ", value)
     return value.strip()
 
@@ -646,9 +648,9 @@ def _find_sheet(metadata: dict[str, Any], sheet_name: str) -> dict[str, Any] | N
 
 def _archive_type_format_requests(sheet_id: int, headers: list[str]) -> list[dict[str, Any]]:
     formats = {
-        "Дата MAX": {"type": "DATE_TIME", "pattern": "dd.mm.yyyy hh:mm:ss"},
-        "Дата счета": {"type": "DATE", "pattern": "dd.mm.yyyy"},
-        "Сумма": {"type": "NUMBER", "pattern": "#,##0.00"},
+        "Р вЂќР В°РЎвЂљР В° MAX": {"type": "DATE_TIME", "pattern": "dd.mm.yyyy hh:mm:ss"},
+        "Р вЂќР В°РЎвЂљР В° РЎРѓРЎвЂЎР ВµРЎвЂљР В°": {"type": "DATE", "pattern": "dd.mm.yyyy"},
+        "Р РЋРЎС“Р СР СР В°": {"type": "NUMBER", "pattern": "#,##0.00"},
     }
     return [
         _number_format_request(sheet_id, headers.index(column_name), number_format)
