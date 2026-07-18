@@ -81,6 +81,12 @@ def build_period_commands(start: date, end: date, staging_root: Path, dry_run: b
     if not dry_run:
         manual_fintablo_command.append("--apply")
     commands.append(manual_fintablo_command)
+    reconciliation_command = [
+        sys.executable, "scripts/sync_manual_reconciliation.py",
+        "--start", start_text, "--end", end_text,
+        "--output", f"reports/manual_reconciliation_{start_text}_{end_text}.csv",
+    ]
+    commands.append(reconciliation_command)
     return commands
 
 
@@ -243,6 +249,7 @@ def _is_optional_fintablo_command(command: list[str]) -> bool:
         "scripts/fintablo_append_expenses_to_google.py",
         "scripts/fintablo_sync_daily.py",
         "scripts/fintablo_sync_from_manual_final.py",
+        "scripts/sync_manual_reconciliation.py",
     }
     return len(command) > 1 and command[1] in scripts
 
