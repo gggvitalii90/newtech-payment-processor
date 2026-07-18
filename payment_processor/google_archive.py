@@ -20,8 +20,8 @@ from .google_api import (
 from .invoice_archive import INVOICE_ARCHIVE_COLUMNS, InvoiceArchiveRecord
 
 
-PAYMENT_STATUSES = ["Р СњР С•Р Р†РЎвЂ№Р в„–", "Р С›Р С—Р В»Р В°РЎвЂЎР ВµР Р…", "Р СџР С•Р Т‘РЎвЂљР Р†Р ВµРЎР‚Р В¶Р Т‘Р ВµР Р…"]
-ANALYSIS_STATUSES = ["Р С›Р С™", "Р СњРЎС“Р В¶Р Р…Р С• РЎР‚Р В°Р В·Р С•Р В±РЎР‚Р В°РЎвЂљРЎРЉ", "Р вЂќРЎС“Р В±Р В»РЎРЉ", "Р СњР ВµРЎвЂљ РЎвЂћР В°Р в„–Р В»Р В°", "Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р В·Р В°Р С–РЎР‚РЎС“Р В·Р С”Р С‘"]
+PAYMENT_STATUSES = ["Новый", "Оплачен", "Подтвержден"]
+ANALYSIS_STATUSES = ["ОК", "Нужно разобрать", "Дубль", "Нет файла", "Ошибка загрузки"]
 MONTH_NAMES = {
     1: ("РЎРЏР Р…Р Р†Р В°РЎР‚РЎРЉ", "РЎРЏР Р…Р Р†Р В°РЎР‚РЎРЏ", "РЎРЏР Р…Р Р†"),
     2: ("РЎвЂћР ВµР Р†РЎР‚Р В°Р В»РЎРЉ", "РЎвЂћР ВµР Р†РЎР‚Р В°Р В»РЎРЏ", "РЎвЂћР ВµР Р†"),
@@ -56,8 +56,8 @@ def setup_archive_sheet(sheets_service, spreadsheet_id: str, sheet_name: str) ->
         [
             {"updateSheetProperties": {"properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
             {"setBasicFilter": {"filter": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": len(headers)}}}},
-            _validation_request(sheet_id, headers, "Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ Р С•Р С—Р В»Р В°РЎвЂљРЎвЂ№", PAYMENT_STATUSES),
-            _validation_request(sheet_id, headers, "Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ РЎР‚Р В°Р В·Р В±Р С•РЎР‚Р В°", ANALYSIS_STATUSES),
+            _validation_request(sheet_id, headers, "Статус оплаты", PAYMENT_STATUSES),
+            _validation_request(sheet_id, headers, "Статус разбора", ANALYSIS_STATUSES),
             *_archive_type_format_requests(sheet_id, headers),
         ]
     )
