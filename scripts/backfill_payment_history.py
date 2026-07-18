@@ -236,6 +236,16 @@ def main() -> int:
         google_settings.archive_spreadsheet_id,
         google_settings.archive_sheet_name,
     )
+    # The invoice archive is shared by both flows and may contain historical
+    # rows that were previously misclassified as IS. Do not let those rows
+    # leak into Итоговая ИС; retain only the exact IS accounts (blank bank is
+    # kept for chat/cash rows whose bank is intentionally not specified).
+    if mode == "ИС":
+        invoice_records = [
+            record for record in invoice_records
+            if not str(getattr(record, "bank", "") or "").strip()
+            or _is_investstroy_payment_record(record)
+        ]
 
     message_archive_records = create_invoice_archive_records(
         messages=invoice_messages,
