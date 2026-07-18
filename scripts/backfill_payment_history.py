@@ -269,6 +269,12 @@ def main() -> int:
         direct_records,
     )
     final_records = apply_mode_defaults(final_records, mode)
+    if mode == "ИС":
+        final_records = [
+            record for record in final_records
+            if not str(getattr(record, "bank", "") or "").strip()
+            or _is_investstroy_payment_record(record)
+        ]
 
     duplicate_issues = [
         HistoryIssue(str(first), "duplicate_pdf_sha256", details=" | ".join(str(path) for path in copies))
