@@ -343,7 +343,8 @@ def main() -> int:
                 error = str(exc)
         update_rows.append({
             "transaction_id": tx.get("id"), "date": tx.get("date"), "value": tx.get("value"), "action": action,
-            "reason": reason, "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes), "error": error,
+            "reason": reason, "payload": json.dumps(payload, ensure_ascii=False),
+            "notes": ";".join(notes + (["conversion_without_second_moneybag_as_cash_flow"] if conversion_fallback else [])), "error": error,
             "manual_sheet": row.sheet, "manual_row": row.row_number,
             "manual_object": row.values.get("Объект", ""), "manual_project": row.values.get("Проект", ""), "manual_budget": row.values.get("Статья бюджета", ""),
             "description": tx.get("description", ""),
@@ -359,11 +360,19 @@ def main() -> int:
         ids, notes = resolve_ids(row, categories, directions, deals)
         if args.only_category:
             ids = {"categoryId": ids["categoryId"]} if "categoryId" in ids else {}
+        # A one-account chat conversion is not a FinTablo transfer yet: it
+        # has no destination moneybag. Keep it as a signed cash flow instead
+        # of silently dropping it from the cash archive. Real two-account
+        # transfers remain excluded from the table.
+        cash_group = row.operation_group
+        conversion_fallback = cash_group == "transfer" and row.amount != 0
+        if conversion_fallback:
+            cash_group = "income" if row.amount > 0 else "outcome"
         payload = {
             "value": float(row.amount),
             "moneybagId": cash_moneybag_id,
-            "group": row.operation_group,
-            "description": row.values.get("Назначение платежа", ""),
+            "group": cash_group,
+            "description": row.values.get(chr(1053)+chr(1072)+chr(1079)+chr(1085)+chr(1072)+chr(1095)+chr(1077)+chr(1085)+chr(1080)+chr(1077)+" "+chr(1087)+chr(1083)+chr(1072)+chr(1090)+chr(1077)+chr(1078)+chr(1072), ""),
             "date": row.date,
             **ids,
         }
@@ -372,7 +381,7 @@ def main() -> int:
         if not category_group_ok:
             payload.pop("categoryId", None)
         can_create_cash = bool(cash_moneybag_id and ("categoryId" in payload or args.allow_cash_without_category))
-        if row.operation_group == "transfer" and ("moneybag2Id" not in payload or "value2" not in payload):
+        if row.operation_group == "transfer" and not conversion_fallback and ("moneybag2Id" not in payload or "value2" not in payload):
             action = "skip_transfer_needs_second_moneybag"
         elif not category_group_ok and not args.allow_cash_without_category:
             action = "skip_wrong_category_group"

@@ -230,6 +230,12 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
         cash_amount = amount(record.amount)
         line = manual_line_from_record(record)
         group = operation_group(record)
+        # A chat conversion has only one cash account. FinTablo cannot create a
+        # transfer without the second moneybag, so represent it as a cash
+        # receipt/expense instead of silently dropping the operation.
+        conversion_fallback = group == "transfer" and cash_amount != 0
+        if conversion_fallback:
+            group = "income" if cash_amount > 0 else "outcome"
         fake_tx = {"group": group}
         payload_ids, notes = payload_from_manual(line, fake_tx, directions, deals, categories, category_by_id, stage_ids)
         payload = {
@@ -253,6 +259,9 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
             result.cash_errors += 1
             result.check_items.append({"type": "cash_not_created", "date": record.date, "amount": record.amount, "description": record.purpose, "reason": "cash_moneybag_not_found"})
         elif group == "transfer":
+            # Kept for defensive compatibility if a future record supplies a
+            # real two-account transfer; one-account chat conversions use the
+            # fallback above and reach the normal create path.
             action = "skip_cash_transfer"
             result.cash_missing += 1
             result.cash_skipped += 1
@@ -270,7 +279,7 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
                 action = "error"
                 error = str(exc)
                 result.check_items.append({"type": "cash_create_error", "date": record.date, "amount": record.amount, "description": record.purpose, "reason": error})
-        report.append({"kind": "cash", "id": "", "action": action, "reason": "missing_cash", "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes), "error": error, "date": payload["date"], "value": payload["value"], "description": record.purpose})
+        report.append({"kind": "cash", "id": "", "action": action, "reason": "missing_cash", "payload": json.dumps(payload, ensure_ascii=False), "notes": ";".join(notes + (["conversion_without_second_moneybag_as_cash_flow"] if conversion_fallback else [])), "error": error, "date": payload["date"], "value": payload["value"], "description": record.purpose})
 
     output.parent.mkdir(parents=True, exist_ok=True)
     fields = sorted({key for row in report for key in row}) or ["kind", "action"]

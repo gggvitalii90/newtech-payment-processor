@@ -199,8 +199,15 @@ def cash_record_quality(record: CashArchiveRecord) -> int:
 
 
 def default_cash_responsible(author: str, dictionaries: dict[str, Any]) -> str:
-    if _norm(author) == 'кирилл' and 'Родин.К' in dictionaries.get("responsibles", {}):
-        return 'Родин.К'
+    # UPay/new_pay is a form bot, never a responsible person. Use the explicit
+    # person in its generated message; otherwise leave the field empty.
+    author_key = _norm(author).replace("_", " ").strip()
+    if author_key in {"new pay", "upay", "u pay"}:
+        return ""
+    kirill = _u(r"\u043a\u0438\u0440\u0438\u043b\u043b")
+    rodin = _u(r"\u0420\u043e\u0434\u0438\u043d.\u041a")
+    if _norm(author) == kirill and rodin in dictionaries.get("responsibles", {}):
+        return rodin
     return author
 
 
@@ -288,8 +295,17 @@ def parse_standalone_cash_conversion(text: str) -> dict[str, str] | None:
     conversion = _u(r"\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0430\u0446\u0438\u044f")
     first_line = re.sub(prefix, "", lines[0], flags=re.IGNORECASE).strip(" .,-")
     detail_lines = [first_line]
+    explicit_responsible = ""
+    responsible_label = _u(r"^(?:\u043f\u043e\u0434\u043e\u0442\u0447\u0435\u0442|\u043f\u043e\u0434\s+\u043e\u0442\u0447\u0435\u0442|\u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439)\s*:\s*")
     for line in lines[1:]:
         if extract_cash_amount(line) or extract_unsigned_cash_amount(line):
+            continue
+        labeled = re.sub(responsible_label, "", line, flags=re.IGNORECASE).strip()
+        if labeled != line and labeled:
+            explicit_responsible = labeled
+            continue
+        if looks_like_cash_responsible(line):
+            explicit_responsible = line
             continue
         detail_lines.append(line.strip(" .,-"))
     purpose = ", ".join(part for part in detail_lines if part)
@@ -300,6 +316,7 @@ def parse_standalone_cash_conversion(text: str) -> dict[str, str] | None:
         "budget_item": "",
         "purpose": purpose,
         "amount": amount.lstrip("+"),
+        **({"responsible": explicit_responsible} if explicit_responsible else {}),
     }
 
 
