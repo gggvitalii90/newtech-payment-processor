@@ -344,7 +344,7 @@ def main() -> int:
         update_rows.append({
             "transaction_id": tx.get("id"), "date": tx.get("date"), "value": tx.get("value"), "action": action,
             "reason": reason, "payload": json.dumps(payload, ensure_ascii=False),
-            "notes": ";".join(notes + (["conversion_without_second_moneybag_as_cash_flow"] if conversion_fallback else [])), "error": error,
+            "notes": ";".join(notes), "error": error,
             "manual_sheet": row.sheet, "manual_row": row.row_number,
             "manual_object": row.values.get("Объект", ""), "manual_project": row.values.get("Проект", ""), "manual_budget": row.values.get("Статья бюджета", ""),
             "description": tx.get("description", ""),
@@ -372,7 +372,7 @@ def main() -> int:
             "value": float(row.amount),
             "moneybagId": cash_moneybag_id,
             "group": cash_group,
-            "description": row.values.get(chr(1053)+chr(1072)+chr(1079)+chr(1085)+chr(1072)+chr(1095)+chr(1077)+chr(1085)+chr(1080)+chr(1077)+" "+chr(1087)+chr(1083)+chr(1072)+chr(1090)+chr(1077)+chr(1078)+chr(1072), ""),
+            "description": row.values.get(_u(r"\u041d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435 \u043f\u043b\u0430\u0442\u0435\u0436\u0430"), ""),
             "date": row.date,
             **ids,
         }
