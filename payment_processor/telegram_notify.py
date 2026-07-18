@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 import json
@@ -52,6 +52,7 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
     fintablo_expense_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_append_expenses_to_google.py"))
     fintablo_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_sync_daily.py"))
     manual_fintablo_summary = _sum_json_stdout(_steps_for_script(report, "fintablo_sync_from_manual_final.py"))
+    reconciliation_summary = _sum_json_stdout(_steps_for_script(report, "sync_manual_reconciliation.py"))
     issues = _sum_issues(payment_summary)
     drive = report.get("drive_lifecycle") or {}
 
@@ -88,6 +89,10 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
             + _u(r"\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e") + f" {fintablo_expense_summary.get('google_expense_updated', 0)}, "
             + _u(r"\u0441\u0442\u0430\u0440\u044b\u0435 \u0441\u0442\u0440\u043e\u043a\u0438 \u0443\u0431\u0440\u0430\u043d\u043e") + f" {fintablo_expense_summary.get('google_expense_legacy_removed', 0)}"
         )
+    if reconciliation_summary:
+        lines.append(
+            f"{RECEIPT} Сверка ручной таблицы: строк в зеркале {reconciliation_summary.get('mirror_rows', 0)}, расхождений {reconciliation_summary.get('issues', 0)}"
+        )
     if manual_fintablo_summary:
         lines.append(
             f"{RECEIPT} FinTablo manual: "
@@ -117,6 +122,10 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         problems.append(f"FinTablo без строки в Итоговой: {fintablo_summary['noncash_no_match']}")
     if manual_fintablo_summary.get("update_errors", 0):
         problems.append(f"FinTablo manual errors: {manual_fintablo_summary['update_errors']}")
+    if reconciliation_summary.get("issues", 0):
+        problems.append(
+            f"Сверка: {reconciliation_summary.get('issues', 0)} расхождений (missing={reconciliation_summary.get('missing', 0)}, extra={reconciliation_summary.get('extra', 0)}, fields={reconciliation_summary.get('field_diff', 0)})"
+        )
     detail_items = []
     detail_items.extend(_format_check_item(item) for item in fintablo_summary.get("check_items", [])[:5])
     detail_items.extend(_format_check_item(item) for item in manual_fintablo_summary.get("check_items", [])[:5])
