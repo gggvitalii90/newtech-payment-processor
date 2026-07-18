@@ -39,7 +39,7 @@ MONTH_NAMES = {
 
 
 def setup_archive_sheet(sheets_service, spreadsheet_id: str, sheet_name: str) -> None:
-    metadata = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    metadata = _execute_google_request(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id))
     sheet = _find_sheet(metadata, sheet_name)
     requests: list[dict[str, Any]] = []
     if sheet is None:
@@ -182,7 +182,7 @@ def _execute_google_request(request, retries: int = 5):
 
 
 def _delete_sheet_rows(sheets_service, spreadsheet_id: str, sheet_name: str, row_numbers: list[int]) -> None:
-    metadata = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    metadata = _execute_google_request(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id))
     sheet = _find_sheet(metadata, sheet_name)
     if sheet is None:
         return

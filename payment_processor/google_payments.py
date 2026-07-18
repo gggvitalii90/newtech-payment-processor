@@ -1,12 +1,26 @@
 from __future__ import annotations
 
 import re
+import time
+
+from googleapiclient.errors import HttpError
 from datetime import datetime
 from typing import Callable, Iterable
 
 from .models import COLUMNS, PaymentRecord
 
 
+
+
+def _execute_google_request(request, retries: int = 5):
+    for attempt in range(retries):
+        try:
+            return request.execute()
+        except HttpError as exc:
+            if exc.resp.status not in {429, 500, 502, 503, 504} or attempt == retries - 1:
+                raise
+            time.sleep(65 if exc.resp.status == 429 else 2 ** attempt)
+    return request.execute()
 FINAL_SHEET_NAME = "Итоговая"
 FINAL_IS_SHEET_NAME = "Итоговая ИС"
 PAYMENT_ARCHIVE_SHEET_NAME = "Архив ПП"
@@ -61,7 +75,7 @@ def _display_date(value: str) -> str:
     return text
 
 def setup_payment_sheets(sheets_service, spreadsheet_id: str) -> None:
-    metadata = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    metadata = _execute_google_request(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id))
     existing = _sheet_ids(metadata)
     schemas = {
         FINAL_SHEET_NAME: (FINAL_COLUMNS, "N"),
@@ -419,7 +433,7 @@ def _format_row_numbers(
 ) -> None:
     if not row_numbers:
         return
-    metadata = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    metadata = _execute_google_request(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id))
     sheet_id = _sheet_ids(metadata)[sheet_name]
     ranges: list[tuple[int, int]] = []
     start = previous = row_numbers[0]
