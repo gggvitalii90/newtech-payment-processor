@@ -21,6 +21,7 @@ from payment_processor.google_archive import read_archive_records
 from payment_processor.google_payments import final_sheet_name_for_mode
 from payment_processor.fintablo_client import FinTabloClient, load_fintablo_settings
 from payment_processor.fintablo_transactions import fetch_fintablo_payment_records
+from payment_processor.fintablo_transactions import BANK_INVESTSTROY, BANK_IP_RODIN_TOCHKA
 from payment_processor.history_backfill import BackfillState, run_resumable_days
 from payment_processor.history_runner import write_google_history
 from payment_processor.invoice_archive import create_invoice_archive_records, invoice_text_operation_records_to_payment_records
@@ -52,16 +53,8 @@ from payment_processor.payment_history import (
 
 
 def _is_investstroy_payment_record(record) -> bool:
-    text = " ".join(
-        str(value or "")
-        for value in (
-            record.bank,
-            record.object_name,
-            record.counterparty,
-            record.purpose,
-        )
-    ).casefold().replace("\u0451", "\u0435")
-    return "\u0438\u043d\u0432\u0435\u0441\u0442\u0441\u0442\u0440\u043e\u0439" in text or "\u043f\u0441\u043a \u0438\u0441" in text
+    # IS is determined only by the FinTablo account, never by free-text fields.
+    return str(record.bank or "").strip() in {BANK_INVESTSTROY, BANK_IP_RODIN_TOCHKA}
 
 
 def filter_fintablo_payment_records_for_mode(records, mode: str):
