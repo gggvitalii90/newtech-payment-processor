@@ -33,10 +33,13 @@ def write_google_history(
         delete_rows_for_dates(sheets_service, spreadsheet_id, final_sheet_name, final_dates, "N")
         updated, appended = upsert_payment_archive(sheets_service, spreadsheet_id, payments)
         payment_count = updated + appended
-        updated, appended = upsert_final_rows(
-            sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name,
-        )
-        final_count = updated + appended
+        if "ИС" in final_sheet_name:
+            final_count = replace_final_rows(sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name)
+        else:
+            updated, appended = upsert_final_rows(
+                sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name,
+            )
+            final_count = updated + appended
         _highlight_fintablo_rows_if_supported(sheets_service, spreadsheet_id, final_sheet_name, _extra_fintablo_names(final, payments))
     else:
         if replace_payment_archive:
