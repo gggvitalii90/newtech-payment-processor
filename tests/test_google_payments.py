@@ -13,6 +13,7 @@ from payment_processor.google_payments import (
     final_sheet_name_for_mode,
     final_row,
     highlight_fintablo_final_rows,
+    _typed_sheet_rows,
 )
 from payment_processor.models import PaymentRecord
 
@@ -32,6 +33,11 @@ def test_setup_payment_sheets_creates_final_and_payment_archive() -> None:
 
 
 
+
+def test_typed_sheet_rows_use_native_date_and_amount_values() -> None:
+    typed = _typed_sheet_rows([["id", "16.07.2026", "1\xa0234,50"]], date_index=1, amount_index=2)
+    assert typed == [["id", 46219.0, 1234.5]]
+
 def test_setup_payment_sheets_resets_data_rows_to_plain_format() -> None:
     sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
     sheets.values_api.headers[FINAL_SHEET_NAME] = FINAL_COLUMNS
@@ -50,7 +56,7 @@ def test_replace_final_rows_rewrites_full_history() -> None:
     sheets = FakeSheets(existing_titles=[FINAL_SHEET_NAME])
     replace_final_rows(sheets, "spreadsheet", [record("one.pdf"), record("two.pdf", "200")])
     assert sheets.values_api.cleared == [f"'{FINAL_SHEET_NAME}'!A2:N"]
-    assert sheets.values_api.updated[f"'{FINAL_SHEET_NAME}'!A1:N3"] == [FINAL_COLUMNS, final_row(record("one.pdf")), final_row(record("two.pdf", "200"))]
+    assert sheets.values_api.updated[f"'{FINAL_SHEET_NAME}'!A1:N3"] == [FINAL_COLUMNS, *_typed_sheet_rows([final_row(record("one.pdf")), final_row(record("two.pdf", "200"))], date_index=1, amount_index=13)]
 
 
 
@@ -59,7 +65,7 @@ def test_replace_final_rows_can_target_is_final_sheet() -> None:
     sheets = FakeSheets(existing_titles=[FINAL_IS_SHEET_NAME])
     replace_final_rows(sheets, "spreadsheet", [record("is.pdf")], sheet_name=FINAL_IS_SHEET_NAME)
     assert sheets.values_api.cleared == [f"'{FINAL_IS_SHEET_NAME}'!A2:N"]
-    assert sheets.values_api.updated[f"'{FINAL_IS_SHEET_NAME}'!A1:N2"] == [FINAL_COLUMNS, final_row(record("is.pdf"))]
+    assert sheets.values_api.updated[f"'{FINAL_IS_SHEET_NAME}'!A1:N2"] == [FINAL_COLUMNS, *_typed_sheet_rows([final_row(record("is.pdf"))], date_index=1, amount_index=13)]
 
 
 def test_final_sheet_name_for_mode_returns_is_sheet() -> None:
@@ -71,7 +77,7 @@ def test_replace_payment_archive_rows_rewrites_full_history() -> None:
     sheets = FakeSheets(existing_titles=[PAYMENT_ARCHIVE_SHEET_NAME])
     replace_payment_archive_rows(sheets, "spreadsheet", [record("one.pdf")])
     assert sheets.values_api.cleared == [f"'{PAYMENT_ARCHIVE_SHEET_NAME}'!A2:N"]
-    assert sheets.values_api.updated[f"'{PAYMENT_ARCHIVE_SHEET_NAME}'!A1:J2"] == [PAYMENT_ARCHIVE_COLUMNS, payment_archive_row(record("one.pdf"))]
+    assert sheets.values_api.updated[f"'{PAYMENT_ARCHIVE_SHEET_NAME}'!A1:J2"] == [PAYMENT_ARCHIVE_COLUMNS, *_typed_sheet_rows([payment_archive_row(record("one.pdf"))], date_index=1, amount_index=9)]
 
 
 def test_upsert_payment_archive_distinguishes_same_filename_on_different_dates() -> None:
@@ -89,7 +95,7 @@ def test_upsert_final_rows_updates_existing_and_preserves_history() -> None:
     updated, appended = upsert_final_rows(sheets, "spreadsheet", [record("same.pdf", "150"), record("new.pdf", "200")])
     assert (updated, appended) == (1, 1)
     assert sheets.values_api.cleared == []
-    assert sheets.values_api.batch_updated[f"'{FINAL_SHEET_NAME}'!A2:N2"] == [final_row(record("same.pdf", "150"))]
+    assert sheets.values_api.batch_updated[f"'{FINAL_SHEET_NAME}'!A2:N2"] == _typed_sheet_rows([final_row(record("same.pdf", "150"))], date_index=1, amount_index=13)
 
 
 def test_upsert_final_rows_matches_existing_google_date_format() -> None:
@@ -102,7 +108,7 @@ def test_upsert_final_rows_matches_existing_google_date_format() -> None:
     updated, appended = upsert_final_rows(sheets, "spreadsheet", [incoming])
 
     assert (updated, appended) == (1, 0)
-    assert sheets.values_api.batch_updated[f"'{FINAL_SHEET_NAME}'!A2:N2"] == [final_row(incoming)]
+    assert sheets.values_api.batch_updated[f"'{FINAL_SHEET_NAME}'!A2:N2"] == _typed_sheet_rows([final_row(incoming)], date_index=1, amount_index=13)
 
 
 

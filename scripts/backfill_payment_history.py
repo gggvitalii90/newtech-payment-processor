@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -58,13 +58,24 @@ def _is_investstroy_payment_record(record) -> bool:
 
 
 def filter_fintablo_payment_records_for_mode(records, mode: str):
+    """Keep only bank accounts belonging to the requested business flow."""
     is_mode = (mode or "").strip().upper() in {"IS", "\u0418\u0421"}
     result = []
     for record in records:
+        # Cash is imported from the MAX cash chat, not from FinTablo here.
+        if not str(record.bank or "").strip():
+            continue
         record_is = _is_investstroy_payment_record(record)
         if record_is == is_mode:
             result.append(record)
     return result
+
+
+def filter_invoice_archive_records_for_mode(records, mode: str):
+    """Filter the shared invoice archive by its explicit MAX flow marker."""
+    wanted = (mode or "").strip().upper()
+    wanted = "\u0418\u0421" if wanted == "IS" else "\u041f\u0421\u041a" if wanted == "PSK" else wanted
+    return [record for record in records if str(getattr(record, "mode", "") or "").strip().upper() == wanted]
 
 
 def parse_args() -> argparse.Namespace:
@@ -236,16 +247,8 @@ def main() -> int:
         google_settings.archive_spreadsheet_id,
         google_settings.archive_sheet_name,
     )
-    # The invoice archive is shared by both flows and may contain historical
-    # rows that were previously misclassified as IS. Do not let those rows
-    # leak into Итоговая ИС; retain only the exact IS accounts (blank bank is
-    # kept for chat/cash rows whose bank is intentionally not specified).
-    if mode == "ИС":
-        invoice_records = [
-            record for record in invoice_records
-            if not str(getattr(record, "bank", "") or "").strip()
-            or _is_investstroy_payment_record(record)
-        ]
+    # The shared archive is partitioned by its explicit MAX flow marker.
+    invoice_records = filter_invoice_archive_records_for_mode(invoice_records, mode)
 
     message_archive_records = create_invoice_archive_records(
         messages=invoice_messages,
@@ -269,13 +272,6 @@ def main() -> int:
         direct_records,
     )
     final_records = apply_mode_defaults(final_records, mode)
-    if mode == "ИС":
-        final_records = [
-            record for record in final_records
-            if not str(getattr(record, "bank", "") or "").strip()
-            or _is_investstroy_payment_record(record)
-        ]
-
     duplicate_issues = [
         HistoryIssue(str(first), "duplicate_pdf_sha256", details=" | ".join(str(path) for path in copies))
         for first, copies in duplicates.items()

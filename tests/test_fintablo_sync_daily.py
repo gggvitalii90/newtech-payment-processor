@@ -1,6 +1,6 @@
 
 from payment_processor.models import PaymentRecord
-from scripts.fintablo_sync_daily import cash_key_from_record, cash_key_from_tx, manual_line_from_record, parse_day
+from scripts.fintablo_sync_daily import amount, cash_key_from_record, cash_key_from_tx, cash_operation_group, manual_line_from_record, parse_day
 
 
 def test_manual_line_from_record_uses_final_table_fields():
@@ -51,6 +51,25 @@ def test_cash_key_matches_existing_fintablo_cash_transaction():
 
     assert cash_key_from_record(record) == cash_key_from_tx(tx)
 
+
+def test_cash_key_normalizes_iso_and_display_dates_for_rerun_deduplication():
+    record = PaymentRecord(
+        name="mid.3", date="22.07.2026", operation_type="Р Р°СЃС…РѕРґ", payment_type="РќР°Р»РёС‡РЅР°СЏ",
+        bank="", counterparty="", invoice_number="", object_name="", project="",
+        budget_item="", responsible="", purpose="РґРѕСЃС‚Р°РІРєР° РіСЂСѓР·РѕРІРёС‡РєРѕРІ", invoice_link="", amount="250000",
+    )
+    tx = {"date": "2026-07-22", "value": "250000", "description": "РґРѕСЃС‚Р°РІРєР° РіСЂСѓР·РѕРІРёС‡РєРѕРІ"}
+
+    assert cash_key_from_record(record) == cash_key_from_tx(tx)
+
+def test_positive_cash_conversion_is_preserved_as_income():
+    record = PaymentRecord(
+        name="mid.4", date="22.07.2026", operation_type="Конвертация", payment_type="Наличная",
+        bank="", counterparty="", invoice_number="", object_name="Конвертация", project="Конвертация",
+        budget_item="", responsible="", purpose="под отчет Мочалов.К", invoice_link="", amount="348000",
+    )
+
+    assert cash_operation_group(record, amount("348000")) == "income"
 
 def test_parse_day_accepts_google_and_iso_dates():
     assert parse_day("2026-07-03").isoformat() == "2026-07-03"
@@ -211,4 +230,3 @@ def test_internal_fot_uses_salary_category_and_fot_direction_when_budget_is_pers
 
     assert notes == []
     assert payload == {"categoryId": 2, "directionId": 3}
-

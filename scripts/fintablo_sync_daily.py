@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import csv
@@ -139,12 +139,32 @@ def operation_group(record: PaymentRecord) -> str:
     return "outcome"
 
 
+def cash_operation_group(record: PaymentRecord, cash_amount: Decimal) -> str:
+    """Map a chat cash row to a FinTablo cash-flow group."""
+    group = operation_group(record)
+    if group == "transfer" and cash_amount != 0:
+        return "income" if cash_amount > 0 else "outcome"
+    return group
+
+def canonical_cash_date(value: Any) -> str:
+    """Return one stable date representation for cash deduplication."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text[:10], fmt).strftime("%d.%m.%Y")
+        except ValueError:
+            continue
+    return text[:10]
+
+
 def cash_key_from_record(record: PaymentRecord) -> tuple[str, Decimal, str]:
-    return (display_day(parse_day(record.date)), amount(record.amount), normalize_key(record.purpose)[:80])
+    return (canonical_cash_date(record.date), amount(record.amount), normalize_key(record.purpose)[:80])
 
 
 def cash_key_from_tx(tx: dict[str, Any]) -> tuple[str, Decimal, str]:
-    return (str(tx.get("date") or "").strip(), amount(tx.get("value")), normalize_key(tx.get("description") or "")[:80])
+    return (canonical_cash_date(tx.get("date")), amount(tx.get("value")), normalize_key(tx.get("description") or "")[:80])
 
 
 def cash_moneybag_id(moneybags: dict[int, dict[str, Any]]) -> int:
@@ -229,11 +249,12 @@ def sync_fintablo(start: date, end: date, *, apply: bool, output: Path) -> SyncR
             continue
         cash_amount = amount(record.amount)
         line = manual_line_from_record(record)
-        group = operation_group(record)
+        original_group = operation_group(record)
+        group = cash_operation_group(record, cash_amount)
         # A chat conversion has only one cash account. FinTablo cannot create a
         # transfer without the second moneybag, so represent it as a cash
         # receipt/expense instead of silently dropping the operation.
-        conversion_fallback = group == "transfer" and cash_amount != 0
+        conversion_fallback = original_group == "transfer" and cash_amount != 0
         if conversion_fallback:
             group = "income" if cash_amount > 0 else "outcome"
         fake_tx = {"group": group}
@@ -304,4 +325,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

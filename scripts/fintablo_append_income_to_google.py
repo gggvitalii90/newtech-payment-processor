@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from payment_processor.env import load_env
 from payment_processor.fintablo_client import FinTabloClient, load_fintablo_settings
-from payment_processor.fintablo_google_income import append_missing_fintablo_incomes, fetch_non_cash_income_records, highlight_existing_fintablo_income_rows
+from payment_processor.fintablo_google_income import append_missing_fintablo_incomes, fetch_non_cash_income_records
 from payment_processor.google_api import build_sheets_service, get_credentials, load_google_settings
 from payment_processor.google_payments import FINAL_SHEET_NAME
 
@@ -23,7 +23,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--end", required=True, help="End date YYYY-MM-DD")
     parser.add_argument("--sheet-name", default=FINAL_SHEET_NAME)
     parser.add_argument("--apply", action="store_true")
-    parser.add_argument("--highlight-existing", action="store_true", help="Reapply pale green fill to existing fintablo income rows")
     return parser.parse_args()
 
 
@@ -44,12 +43,6 @@ def main() -> int:
         sheet_name=args.sheet_name,
         apply=args.apply,
     )
-    if args.apply and args.highlight_existing:
-        summary["google_income_highlighted"] = highlight_existing_fintablo_income_rows(
-            sheets,
-            google_settings.archive_spreadsheet_id,
-            sheet_name=args.sheet_name,
-        )
     summary.update({
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),

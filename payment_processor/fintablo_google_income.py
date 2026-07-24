@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import re
 from calendar import monthrange
@@ -82,11 +82,8 @@ def append_missing_fintablo_incomes(
         start_row, end_row = _append_final_rows(sheets_service, spreadsheet_id, sheet_name, missing)
         _highlight_rows(sheets_service, spreadsheet_id, sheet_name, start_row, end_row)
         appended = len(missing)
-    highlighted = highlight_existing_fintablo_income_rows(
-        sheets_service,
-        spreadsheet_id,
-        sheet_name=sheet_name,
-    ) if apply else 0
+    # Existing rows are colored only by the provenance-aware history pass.
+    highlighted = 0
     return {
         "fintablo_income_records": len(incoming),
         "google_income_existing": len(incoming) - len(missing),
@@ -150,11 +147,8 @@ def append_missing_fintablo_expenses(
     if apply and legacy_row_numbers:
         _delete_sheet_rows(sheets_service, spreadsheet_id, sheet_name, legacy_row_numbers)
         legacy_removed = len(legacy_row_numbers)
-    highlighted = highlight_existing_fintablo_expense_rows(
-        sheets_service,
-        spreadsheet_id,
-        sheet_name=sheet_name,
-    ) if apply else 0
+    # Existing rows are colored only by the provenance-aware history pass.
+    highlighted = 0
     return {
         "fintablo_expense_records": len(all_expenses),
         "google_expense_candidates": len(incoming),

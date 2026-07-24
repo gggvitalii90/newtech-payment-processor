@@ -22,6 +22,7 @@ from payment_processor.invoice_archive import (
 )
 from payment_processor.models import PaymentRecord
 from payment_processor.max_api import FileCandidate
+from payment_processor.parser import parse_payment_text
 
 
 @pytest.mark.parametrize(
@@ -1459,3 +1460,48 @@ def test_normalize_signature_moves_auto_household_personal_auto_to_project_and_r
     assert result["object_name"] == "\u0410\u0432\u0442\u043e\u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u043e"
     assert result["project"] == "\u041b\u0438\u0447\u043d\u044b\u0435 \u0430\u0432\u0442\u043e"
     assert result["budget_item"] == "\u0420\u0435\u043c\u043e\u043d\u0442/\u0422\u041e"
+
+
+def test_exact_archive_match_overrides_inferred_object():
+    payment = PaymentRecord(
+        "payment.pdf", "2026-07-20", "??????", "??????????? ??? ???", "?/? ?????",
+        "?? ???????? ???? ??????????", "395", "??????", "?? ( ?? )",
+        "????????", "???????? ?.", "???????", "", "1000",
+    )
+    archive = InvoiceArchiveRecord(
+        "2026-07-20 12:00:00", "???", "-1", "", "invoice.pdf", "pdf",
+        "??????", "??????????? ??? ???", "", "?? ???????? ???? ??????????",
+        "395", "2026-07-20", "?????", "?? ( ? )", "???????",
+        "???????? ?.", "???????????", "1000", "?????",
+        "https://drive.google.com/file/d/invoice", "mid", "file", "??",
+    )
+    assert enrich_payment_records_from_archive([payment], [archive]) == 1
+    assert payment.object_name == "?????"
+    assert payment.project == "?? ( ? )"
+    assert payment.budget_item == "???????"
+
+
+def test_extract_invoice_details_keeps_cyrillic_invoice_prefix_and_digits() -> None:
+    details = extract_invoice_details_from_text(
+        '\u0421\u0447\u0435\u0442 \u2116 \u0422\u042e\u042d00168834 \u043e\u0442 16.07.2026'
+    )
+    assert details['invoice_number'] == '\u0422\u042e\u042d00168834'
+
+
+def test_parse_payment_text_keeps_invoice_subnumber_after_colon() -> None:
+    record = parse_payment_text(
+        "\n".join(
+            [
+                "ПЛАТЕЖНОЕ ПОРУЧЕНИЕ № 49 18.06.2026",
+                "Плательщик ООО \"ПСК Ньютек\"",
+                "Получатель ООО \"Европлан Сервис\"",
+                "Счет № SP-70013: 93",
+                "Назначение платежа",
+                "Оплата по счету № SP-70013: 93",
+                "Сумма 80 000-00",
+            ]
+        ),
+        "payment.pdf",
+    )
+
+    assert record.invoice_number == "SP-70013: 93"

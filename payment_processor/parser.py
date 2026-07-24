@@ -330,20 +330,23 @@ def _first_sentence_dot(text: str) -> int | None:
 def _extract_invoice_number(purpose: str) -> str:
     if "\u0440\u0430\u0441\u0442\u043e\u0440\u0436" in purpose.lower():
         return "\u0431/\u0441\u0447"
+    # Invoice identifiers may contain Cyrillic prefixes, slashes, hyphens,
+    # dots and a bank sub-number after a colon (for example ???00168834 or
+    # SP-70013: 93). Keep the complete identifier for PP matching.
+    token = r"[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u04510-9][A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u04510-9/_.-]*(?:\s*:\s*[A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u04510-9][A-Za-z\u0410-\u042f\u0430-\u044f\u0401\u04510-9/_.-]*)?"
+    invoice_label = r"(?:\u0441\u0447\u0435\u0442\u0443?|\u0441\u0447\u0451\u0442\u0443?)\b"
     patterns = [
-        r"\b\u043f\u043e\s+\u0437\u0430\u043a\u0430\u0437\u0443\s*(?:\u2116\s*)?([A-Za-z\u0410-\u042f\u0430-\u044f0-9/_.-]+)",
-        r"[Сс]ч[её]т(?:\s+на\s+оплату)?\s*№\s*([A-Za-zА-Яа-я0-9/_.-]+)",
-        r"[Сс]ч[её]ту\s*№\s*([A-Za-zА-Яа-я0-9/_.-]+)",
-        r"[Дд]оговор[ау]?\s*№\s*([A-Za-zА-Яа-я0-9/_.-]+)",
-        r"[Дд]оговор[ау]?[^№]{0,80}№\s*([A-Za-zА-Яа-я0-9/_.-]+)",
-        r"\bпо\s+сч[её]ту\s*(?:№\s*)?([A-Za-zА-Яа-я0-9/_.-]+)",
-        r"\b\u043f\u043e\s+\u0441\u0447\.\s*(?:\u2116\s*)?([A-Za-z\u0410-\u042f\u0430-\u044f0-9/_.-]+)",
+        rf"\b\u043f\u043e\s+\u0437\u0430\u043a\u0430\u0437\u0443\s*(?:\u2116\s*)?({token})",
+        rf"{invoice_label}(?:\s+\u043d\u0430\s+\u043e\u043f\u043b\u0430\u0442\u0443)?\s*(?:\u2116|#|N|No)?\s*({token})",
+        rf"\b\u0434\u043e\u0433\u043e\u0432\u043e\u0440\u0430?\s*(?:\u2116|#|N|No)\s*({token})",
+        rf"\b\u043f\u043e\s+\u0441\u0447\u0435\u0442\u0443\s*(?:\u2116\s*)?({token})",
+        rf"\b\u043f\u043e\s+\u0441\u0447\.\s*(?:\u2116\s*)?({token})",
     ]
     for pattern in patterns:
-        match = re.search(pattern, purpose, re.I)
+        match = re.search(pattern, purpose, re.IGNORECASE)
         if match:
-            return match.group(1).rstrip(".,")
-    return "б/сч"
+            return match.group(1).strip(" .,;:")
+    return "\u0431/\u0441\u0447"
 
 
 def _payment_type(purpose: str) -> str:

@@ -155,11 +155,13 @@ def highlight_fintablo_final_rows(
     ))
     income_rows: list[int] = []
     expense_rows: list[int] = []
+    all_fintablo_rows: list[int] = []
     for offset, row in enumerate(response.get("values", []), start=2):
         values = list(row) + [""] * len(FINAL_COLUMNS)
         name = _normalize(values[0])
         if not name.startswith("fintablo:"):
             continue
+        all_fintablo_rows.append(offset)
         if extra_names is not None and name not in extra_names:
             continue
         operation = _normalize(values[2])
@@ -167,10 +169,47 @@ def highlight_fintablo_final_rows(
             income_rows.append(offset)
         elif operation == _normalize(OPERATION_EXPENSE):
             expense_rows.append(offset)
+    _clear_row_fills(sheets_service, spreadsheet_id, sheet_name, all_fintablo_rows)
     _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, income_rows, FINTABLO_INCOME_FILL)
     _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, expense_rows, FINTABLO_EXPENSE_FILL)
     return len(income_rows), len(expense_rows)
 
+
+def _typed_sheet_rows(rows: list[list[str]], *, date_index: int, amount_index: int) -> list[list[object]]:
+    """Convert date and amount columns to Sheets-native typed values."""
+    typed: list[list[object]] = []
+    for row in rows:
+        values: list[object] = list(row)
+        if date_index < len(values):
+            parsed = _parse_sheet_date(values[date_index])
+            if parsed is not None:
+                values[date_index] = float((parsed - datetime(1899, 12, 30)).days)
+        if amount_index < len(values):
+            parsed_amount = _parse_sheet_amount(values[amount_index])
+            if parsed_amount is not None:
+                values[amount_index] = parsed_amount
+        typed.append(values)
+    return typed
+
+
+def _parse_sheet_date(value: object):
+    text = str(value or "").strip()
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%Y.%m.%d"):
+        try:
+            return datetime.strptime(text[:10], fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_sheet_amount(value: object):
+    text = str(value or "").replace("\xa0", " ").replace(" ", "").replace(",", ".").strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
 
 def _replace_rows(
     sheets_service,
@@ -184,7 +223,7 @@ def _replace_rows(
 ) -> int:
     rows = [row_builder(record) for record in records]
     _clear_values(sheets_service, spreadsheet_id, f"'{sheet_name}'!A2:{clear_last_column}")
-    values = [columns, *rows]
+    values = [columns, *_typed_sheet_rows(rows, date_index=1, amount_index=len(columns) - 1)]
     _write_values(
         sheets_service,
         spreadsheet_id,
@@ -275,7 +314,7 @@ def _upsert_rows(
         elif row_number is None:
             new_rows.append(rows[0])
         else:
-            updates.append((f"'{sheet_name}'!A{row_number}:{last_column}{row_number}", [rows[0]]))
+            updates.append((f"'{sheet_name}'!A{row_number}:{last_column}{row_number}", _typed_sheet_rows([rows[0]], date_index=1, amount_index=len(columns) - 1)))
     if updates:
         _batch_update_values(sheets_service, spreadsheet_id, updates)
     if new_rows:
@@ -284,7 +323,7 @@ def _upsert_rows(
             range=f"'{sheet_name}'!A1",
             valueInputOption="USER_ENTERED",
             insertDataOption="INSERT_ROWS",
-            body={"values": new_rows},
+            body={"values": _typed_sheet_rows(new_rows, date_index=1, amount_index=len(columns) - 1)},
         ).execute()
     return len(updates), len(new_rows)
 
@@ -427,6 +466,38 @@ def _number_format_request(sheet_id: int, column_index: int, number_format: dict
         }
     }
 
+
+
+def _clear_row_fills(
+    sheets_service,
+    spreadsheet_id: str,
+    sheet_name: str,
+    row_numbers: list[int],
+) -> None:
+    if not row_numbers:
+        return
+    metadata = _execute_google_request(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id))
+    sheet_id = _sheet_ids(metadata)[sheet_name]
+    requests = [
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": row_number - 1,
+                    "endRowIndex": row_number,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": len(FINAL_COLUMNS),
+                },
+                "cell": {"userEnteredFormat": {"backgroundColor": {}}},
+                "fields": "userEnteredFormat.backgroundColor",
+            }
+        }
+        for row_number in row_numbers
+    ]
+    sheets_service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": requests},
+    ).execute()
 
 def _format_row_numbers(
     sheets_service,

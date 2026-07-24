@@ -93,3 +93,14 @@ def test_commission_expenses_are_aggregated_to_month_end() -> None:
     assert summary.amount == "3"
     assert summary.budget_item == u(r"\u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f")
     assert "07.2026" in summary.purpose
+
+def test_salary_rows_are_not_aggregated() -> None:
+    records = [
+        expense_record("salary:1", "70000", "15.07.2026", budget=u(r"\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430")),
+        expense_record("salary:2", "76039", "15.07.2026", budget=u(r"\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430")),
+        expense_record("salary:3", "57244", "15.07.2026", budget=u(r"\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430")),
+    ]
+
+    result = aggregate_google_expense_records(records)
+
+    assert [record.name for record in result] == ["salary:1", "salary:2", "salary:3"]

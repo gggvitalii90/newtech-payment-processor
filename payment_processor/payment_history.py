@@ -536,10 +536,10 @@ def _apply_unmatched_context_fallbacks(record: PaymentRecord) -> None:
         record.project = record.project or "\u041a\u041c ( \u041f\u0420 )"
         record.budget_item = record.budget_item or "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430"
         record.responsible = record.responsible or "\u041c\u0438\u0440\u043e\u043d\u043e\u0432\u0430 \u042e."
-        record.purpose = "\u0448\u0430\u043b\u0430\u043d\u0434\u0430"
+        record.purpose = record.purpose or "\u0448\u0430\u043b\u0430\u043d\u0434\u0430"
     if "\u0441\u0430\u043c\u044b\u0433\u0438\u043d" in counterparty and "\u0442\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442" in purpose:
         record.budget_item = "\u0422\u0435\u0445\u043d\u0438\u043a\u0430"
-        record.purpose = "\u0448\u0430\u043b\u0430\u043d\u0434\u0430"
+        record.purpose = record.purpose or "\u0448\u0430\u043b\u0430\u043d\u0434\u0430"
 
 
 def _apply_april_13_learned_patterns(record: PaymentRecord) -> None:
@@ -560,7 +560,7 @@ def _apply_april_13_learned_patterns(record: PaymentRecord) -> None:
         record.project = "\u041a\u041c ( \u041f\u0420 )"
         record.budget_item = "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430"
         record.responsible = "\u041c\u0438\u0440\u043e\u043d\u043e\u0432\u0430 \u042e."
-        record.purpose = "\u0448\u0430\u043b\u0430\u043d\u0434\u0430"
+        record.purpose = record.purpose or "\u0448\u0430\u043b\u0430\u043d\u0434\u0430"
 
     if "\u043d\u0438\u043a\u043e\u043b\u0430\u0435\u0432\u0430" in counterparty and "\u043f\u0440\u0435\u0437\u0435\u043d\u0442\u0430\u0446" in purpose:
         record.responsible = "\u041a\u043e\u0441\u0438\u0447\u043a\u0438\u043d.\u0410"

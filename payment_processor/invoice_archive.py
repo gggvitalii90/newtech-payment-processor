@@ -754,7 +754,9 @@ def enrich_payment_records_from_archive(
     for payment in payments:
         invoice_number = _normalize_invoice_number(payment.invoice_number)
         counterparty = _normalize_counterparty_match_key(payment.counterparty)
-        archive = _select_best_archive_candidate(archive_by_key.get((invoice_number, counterparty), []))
+        exact_candidates = archive_by_key.get((invoice_number, counterparty), [])
+        archive = _select_best_archive_candidate(exact_candidates)
+        exact_key_match = archive is not None and bool(invoice_number and counterparty)
 
         if archive is None and invoice_number and not _is_missing_invoice_number(invoice_number):
             invoice_candidates = archive_by_invoice.get(invoice_number, [])
@@ -814,7 +816,7 @@ def enrich_payment_records_from_archive(
             archive_field = "google_drive_link" if field == "invoice_link" else field
             value = getattr(archive, archive_field).strip()
             current_value = getattr(payment, field).strip()
-            can_replace = field == "invoice_link" or not current_value
+            can_replace = exact_key_match or field == "invoice_link" or not current_value
             if field == "budget_item" and _is_unallocated_fintablo_category(current_value):
                 can_replace = True
             if value and can_replace:

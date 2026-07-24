@@ -161,6 +161,19 @@ def test_fintablo_records_are_filtered_by_final_mode() -> None:
 
     assert filter_fintablo_payment_records_for_mode([psk, invest], "\u0418\u0421") == [invest]
     assert filter_fintablo_payment_records_for_mode([psk, invest], "\u041f\u0421\u041a") == [psk]
+    cash = PaymentRecord("fintablo:cash", "2026-07-16", "\u0420\u0430\u0441\u0445\u043e\u0434", "\u041d\u0430\u043b\u0438\u0447\u043d\u0430\u044f", "", "", "", "", "", "", "", "", "", "100")
+    assert filter_fintablo_payment_records_for_mode([cash], "\u0418\u0421") == []
+    assert filter_fintablo_payment_records_for_mode([cash], "\u041f\u0421\u041a") == []
+
+
+def test_invoice_archive_records_are_partitioned_by_explicit_mode() -> None:
+    from scripts.backfill_payment_history import filter_invoice_archive_records_for_mode
+
+    psk = invoice()
+    invest = InvoiceArchiveRecord(*psk.as_row())
+    invest.mode = "\u0418\u0421"
+    assert filter_invoice_archive_records_for_mode([psk, invest], "\u0418\u0421") == [invest]
+    assert filter_invoice_archive_records_for_mode([psk, invest], "\u041f\u0421\u041a") == [psk]
 
 
 def test_build_final_history_matches_unique_invoice_by_amount_when_counterparty_is_bad() -> None:
