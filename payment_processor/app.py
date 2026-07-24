@@ -14,7 +14,7 @@ from .cash_archive import cash_records_to_payment_records, create_cash_archive_r
 from .date_picker import DatePicker
 from .dictionaries import load_dictionaries
 from .env import load_env
-from .google_api import build_drive_service, build_sheets_service, get_credentials, load_google_settings
+from .google_api import build_drive_service, build_sheets_service, get_credentials, load_google_settings, verify_drive_account
 from .google_archive import append_archive_records, prepare_records_for_google_drive, read_archive_records, setup_archive_sheet
 from .google_payments import final_sheet_name_for_mode, setup_payment_sheets, upsert_final_rows, upsert_payment_archive
 from .invoice_archive import create_invoice_archive_records, enrich_invoice_records_from_files, enrich_payment_records_from_archive, invoice_text_operation_records_to_payment_records, mark_paid_records, write_invoice_archive_xlsx
@@ -316,6 +316,7 @@ class PaymentProcessorApp(tk.Tk):
                 return 0
             credentials = get_credentials(settings)
             drive_service = build_drive_service(credentials)
+            verify_drive_account(drive_service, env.get("GOOGLE_ALLOWED_EMAIL", "pcknew.tech@gmail.com"))
             sheets_service = build_sheets_service(credentials)
             local_files_by_name = {path.name: path for path in other_files}
             setup_archive_sheet(sheets_service, settings.archive_spreadsheet_id, settings.archive_sheet_name)
@@ -473,6 +474,7 @@ def sync_payment_sheets(
     }
     if paths_by_name and archive_rows:
         drive_service = build_drive_service(credentials)
+        verify_drive_account(drive_service, env.get("GOOGLE_ALLOWED_EMAIL", "pcknew.tech@gmail.com"))
         payment_root_id = env.get(
             "GOOGLE_PAYMENT_ROOT_FOLDER_ID",
             "1jB4mkAxrfykCC_N5BO4P-jx0QSEsiQhX",

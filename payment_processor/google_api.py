@@ -37,6 +37,23 @@ class GoogleConfigError(RuntimeError):
     pass
 
 
+DEFAULT_ALLOWED_DRIVE_EMAIL = "pcknew.tech@gmail.com"
+
+
+def verify_drive_account(drive_service, expected_email: str = DEFAULT_ALLOWED_DRIVE_EMAIL) -> str:
+    """Fail closed when OAuth points at an unintended Google account."""
+    expected = (expected_email or DEFAULT_ALLOWED_DRIVE_EMAIL).strip().casefold()
+    if not expected:
+        raise GoogleConfigError("Не задан разрешённый аккаунт Google Drive")
+    about = drive_service.about().get(fields="user(emailAddress,displayName)").execute()
+    actual = str(about.get("user", {}).get("emailAddress", "")).strip()
+    if not actual or actual.casefold() != expected:
+        raise GoogleConfigError(
+            f"Google Drive авторизован как {actual or 'неизвестный аккаунт'}, "
+            f"ожидался {expected_email}"
+        )
+    return actual
+
 def load_google_settings(env: dict[str, str]) -> GoogleSettings:
     client_secret = env.get("GOOGLE_CLIENT_SECRET_FILE", "").strip()
     if not client_secret:

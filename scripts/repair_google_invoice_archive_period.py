@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from payment_processor.config import load_config, load_rules
 from payment_processor.dictionaries import load_dictionaries
 from payment_processor.env import load_env
-from payment_processor.google_api import build_drive_service, build_sheets_service, get_credentials, load_google_settings
+from payment_processor.google_api import build_drive_service, build_sheets_service, get_credentials, load_google_settings, verify_drive_account
 from payment_processor.google_archive import (
     _delete_sheet_rows,
     append_archive_records,
@@ -68,6 +68,7 @@ def main() -> None:
     settings = load_google_settings(env)
     credentials = get_credentials(settings)
     drive_service = build_drive_service(credentials)
+    verify_drive_account(drive_service, env.get("GOOGLE_ALLOWED_EMAIL", "pcknew.tech@gmail.com"))
     sheets_service = build_sheets_service(credentials)
     setup_archive_sheet(sheets_service, settings.archive_spreadsheet_id, settings.archive_sheet_name)
 
