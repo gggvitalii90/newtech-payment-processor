@@ -155,13 +155,14 @@ def highlight_fintablo_final_rows(
     ))
     income_rows: list[int] = []
     expense_rows: list[int] = []
-    all_fintablo_rows: list[int] = []
+    all_data_rows: list[int] = [
+        offset for offset, _row in enumerate(response.get("values", []), start=2)
+    ]
     for offset, row in enumerate(response.get("values", []), start=2):
         values = list(row) + [""] * len(FINAL_COLUMNS)
         name = _normalize(values[0])
         if not name.startswith("fintablo:"):
             continue
-        all_fintablo_rows.append(offset)
         if extra_names is not None and name not in extra_names:
             continue
         operation = _normalize(values[2])
@@ -169,7 +170,7 @@ def highlight_fintablo_final_rows(
             income_rows.append(offset)
         elif operation == _normalize(OPERATION_EXPENSE):
             expense_rows.append(offset)
-    _clear_row_fills(sheets_service, spreadsheet_id, sheet_name, all_fintablo_rows)
+    _clear_row_fills(sheets_service, spreadsheet_id, sheet_name, all_data_rows)
     _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, income_rows, FINTABLO_INCOME_FILL)
     _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, expense_rows, FINTABLO_EXPENSE_FILL)
     return len(income_rows), len(expense_rows)
@@ -488,7 +489,11 @@ def _clear_row_fills(
                     "startColumnIndex": 0,
                     "endColumnIndex": len(FINAL_COLUMNS),
                 },
-                "cell": {"userEnteredFormat": {"backgroundColor": {}}},
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}
+                    }
+                },
                 "fields": "userEnteredFormat.backgroundColor",
             }
         }
