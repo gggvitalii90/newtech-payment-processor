@@ -84,3 +84,32 @@ def test_format_update_notification_includes_failed_step_error_excerpt() -> None
     assert _ru(r"\u274c \u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 NewTech \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u043e\u0441\u044c \u0441 \u043e\u0448\u0438\u0431\u043a\u043e\u0439") in message
     assert _ru(r"\u0448\u0430\u0433 \u0443\u043f\u0430\u043b") + ": scripts/backfill_payment_history.py --mode IS" in message
     assert "RuntimeError: " + _ru(r"\u041d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d MAX_IS_CHAT_ID") in message
+
+
+def test_format_update_notification_does_not_hide_missing_payment_report_as_zero() -> None:
+    report = {
+        "status": "ok",
+        "start_date": "2026-07-23",
+        "end_date": "2026-07-23",
+        "dry_run": False,
+        "steps": [
+            {
+                "command": ["scripts/backfill_max_archive.py", "--mode", "PSK"],
+                "returncode": 0,
+                "stdout": "downloaded= 2\ninvoice_rows= 2\ngoogle_rows= 2\n",
+            },
+            {
+                "command": ["scripts/backfill_payment_history.py", "--mode", "PSK"],
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "FinTablo unavailable",
+            },
+        ],
+    }
+
+    message = format_update_notification(report, "sheet123")
+
+    assert "ПП: отчёт не получен" in message
+    assert "Наличка: отчёт не получен" in message
+    assert "Итоговая: отчёт не получен" in message
+    assert "ПП: 0 / сопоставлено 0 / без счета 0" not in message

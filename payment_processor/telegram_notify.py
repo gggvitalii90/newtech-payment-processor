@@ -56,6 +56,7 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
     issues = _sum_issues(payment_summary)
     drive = report.get("drive_lifecycle") or {}
 
+    payment_available = bool(payment_summary)
     lines = [
         title,
         "",
@@ -63,9 +64,9 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         f"{BUILDING} " + _u(r"\u041f\u043e\u0442\u043e\u043a: \u041f\u0421\u041a + \u0418\u0421"),
         "",
         f"{DOC} " + _u(r"\u0421\u0447\u0435\u0442\u0430: \u0444\u0430\u0439\u043b\u043e\u0432") + f" {_invoice_file_count(max_summary)} / " + _u(r"\u0441\u0442\u0440\u043e\u043a") + f" {max_summary.get('invoice_rows', 0)} / Google {max_summary.get('google_rows', 0)}",
-        f"{BANK} " + _u(r"\u041f\u041f") + f": {payment_summary.get('payment_records', 0)} / " + _u(r"\u0441\u043e\u043f\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u043e") + f" {payment_summary.get('matched_invoices', 0)} / " + _u(r"\u0431\u0435\u0437 \u0441\u0447\u0435\u0442\u0430") + f" {payment_summary.get('missing_payment_links', 0)}",
-        f"{CASH} " + _u(r"\u041d\u0430\u043b\u0438\u0447\u043a\u0430") + f": {payment_summary.get('cash_operations', max_summary.get('cash_rows', 0))} " + _u(r"\u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439"),
-        f"{CHART} " + _u(r"\u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f") + f": {payment_summary.get('final_records', 0)} " + _u(r"\u0441\u0442\u0440\u043e\u043a"),
+        f"{BANK} " + _u(r"\u041f\u041f") + (f": {payment_summary.get('payment_records', 0)} / " + _u(r"\u0441\u043e\u043f\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u043e") + f" {payment_summary.get('matched_invoices', 0)} / " + _u(r"\u0431\u0435\u0437 \u0441\u0447\u0435\u0442\u0430") + f" {payment_summary.get('missing_payment_links', 0)}" if payment_available else _u(r": \u043e\u0442\u0447\u0451\u0442 \u043d\u0435 \u043f\u043e\u043b\u0443\u0447\u0435\u043d")),
+        f"{CASH} " + _u(r"\u041d\u0430\u043b\u0438\u0447\u043a\u0430") + (f": {payment_summary.get('cash_operations', max_summary.get('cash_rows', 0))} " + _u(r"\u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439") if payment_available else _u(r": \u043e\u0442\u0447\u0451\u0442 \u043d\u0435 \u043f\u043e\u043b\u0443\u0447\u0435\u043d")),
+        f"{CHART} " + _u(r"\u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f") + (f": {payment_summary.get('final_records', 0)} " + _u(r"\u0441\u0442\u0440\u043e\u043a") if payment_available else _u(r": \u043e\u0442\u0447\u0451\u0442 \u043d\u0435 \u043f\u043e\u043b\u0443\u0447\u0435\u043d")),
     ]
     if drive:
         lines.append(
@@ -91,7 +92,7 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         )
     if reconciliation_summary:
         lines.append(
-            f"{RECEIPT} Сверка ручной таблицы: строк в зеркале {reconciliation_summary.get('mirror_rows', 0)}, расхождений {reconciliation_summary.get('issues', 0)}"
+            f"{RECEIPT} РЎРІРµСЂРєР° СЂСѓС‡РЅРѕР№ С‚Р°Р±Р»РёС†С‹: СЃС‚СЂРѕРє РІ Р·РµСЂРєР°Р»Рµ {reconciliation_summary.get('mirror_rows', 0)}, СЂР°СЃС…РѕР¶РґРµРЅРёР№ {reconciliation_summary.get('issues', 0)}"
         )
     if manual_fintablo_summary:
         lines.append(
@@ -117,14 +118,14 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
     if fintablo_summary.get("errors", 0):
         problems.append(f"FinTablo errors: {fintablo_summary['errors']}")
     if fintablo_summary.get("noncash_no_payload", 0):
-        problems.append(f"FinTablo без квалификации: {fintablo_summary['noncash_no_payload']}")
+        problems.append(_u(r"FinTablo \u0431\u0435\u0437 \u043a\u0432\u0430\u043b\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u0438: ") + str(fintablo_summary["noncash_no_payload"]))
     if fintablo_summary.get("noncash_no_match", 0):
-        problems.append(f"FinTablo без строки в Итоговой: {fintablo_summary['noncash_no_match']}")
+        problems.append(_u(r"FinTablo \u0431\u0435\u0437 \u0441\u0442\u0440\u043e\u043a\u0438 \u0432 \u0418\u0442\u043e\u0433\u043e\u0432\u043e\u0439: ") + str(fintablo_summary["noncash_no_match"]))
     if manual_fintablo_summary.get("update_errors", 0):
         problems.append(f"FinTablo manual errors: {manual_fintablo_summary['update_errors']}")
     if reconciliation_summary.get("issues", 0):
         problems.append(
-            f"Сверка: {reconciliation_summary.get('issues', 0)} расхождений (missing={reconciliation_summary.get('missing', 0)}, extra={reconciliation_summary.get('extra', 0)}, fields={reconciliation_summary.get('field_diff', 0)})"
+            f"РЎРІРµСЂРєР°: {reconciliation_summary.get('issues', 0)} СЂР°СЃС…РѕР¶РґРµРЅРёР№ (missing={reconciliation_summary.get('missing', 0)}, extra={reconciliation_summary.get('extra', 0)}, fields={reconciliation_summary.get('field_diff', 0)})"
         )
     detail_items = []
     detail_items.extend(_format_check_item(item) for item in fintablo_summary.get("check_items", [])[:5])
