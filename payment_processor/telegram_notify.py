@@ -169,10 +169,24 @@ def send_telegram_message(env: dict[str, str], text: str) -> bool:
     chat_id = (env.get("TELEGRAM_CHAT_ID") or "").strip()
     if not token or not chat_id:
         return False
+    # Escape dynamic descriptions before Telegram parses HTML, preserving the
+    # generated spreadsheet anchor so the link remains clickable.
+    anchor_pattern = re.compile(r'<a\s+href="https://docs\.google\.com/[^"]+">.*?</a>')
+    anchors: list[str] = []
+
+    def keep_anchor(match: re.Match[str]) -> str:
+        anchors.append(match.group(0))
+        return f"__NEWTECH_ANCHOR_{len(anchors) - 1}__"
+
+    safe_text = anchor_pattern.sub(keep_anchor, text)
+    safe_text = html.escape(safe_text, quote=False)
+    for index, anchor in enumerate(anchors):
+        safe_text = safe_text.replace(f"__NEWTECH_ANCHOR_{index}__", anchor)
+
     payload = json.dumps(
         {
             "chat_id": chat_id,
-            "text": text,
+            "text": safe_text,
             "parse_mode": "HTML",
             "disable_web_page_preview": True,
         },
