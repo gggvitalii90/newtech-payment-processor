@@ -92,7 +92,13 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         )
     if reconciliation_summary:
         lines.append(
-            f"{RECEIPT} РЎРІРµСЂРєР° СЂСѓС‡РЅРѕР№ С‚Р°Р±Р»РёС†С‹: СЃС‚СЂРѕРє РІ Р·РµСЂРєР°Р»Рµ {reconciliation_summary.get('mirror_rows', 0)}, СЂР°СЃС…РѕР¶РґРµРЅРёР№ {reconciliation_summary.get('issues', 0)}"
+            f"{RECEIPT} "
+            + _u(r"\u0421\u0432\u0435\u0440\u043a\u0430 \u0440\u0443\u0447\u043d\u043e\u0439 \u0442\u0430\u0431\u043b\u0438\u0446\u044b")
+            + ": "
+            + _u(r"\u0441\u0442\u0440\u043e\u043a \u0432 \u0437\u0435\u0440\u043a\u0430\u043b\u0435")
+            + f" {reconciliation_summary.get('mirror_rows', 0)}, "
+            + _u(r"\u0440\u0430\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0439")
+            + f" {reconciliation_summary.get('issues', 0)}"
         )
     if manual_fintablo_summary:
         lines.append(
@@ -125,7 +131,10 @@ def format_update_notification(report: dict[str, Any], spreadsheet_id: str) -> s
         problems.append(f"FinTablo manual errors: {manual_fintablo_summary['update_errors']}")
     if reconciliation_summary.get("issues", 0):
         problems.append(
-            f"РЎРІРµСЂРєР°: {reconciliation_summary.get('issues', 0)} СЂР°СЃС…РѕР¶РґРµРЅРёР№ (missing={reconciliation_summary.get('missing', 0)}, extra={reconciliation_summary.get('extra', 0)}, fields={reconciliation_summary.get('field_diff', 0)})"
+            _u(r"\u0421\u0432\u0435\u0440\u043a\u0430")
+            + f": {reconciliation_summary.get('issues', 0)} "
+            + _u(r"\u0440\u0430\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0439")
+            + f" (missing={reconciliation_summary.get('missing', 0)}, extra={reconciliation_summary.get('extra', 0)}, fields={reconciliation_summary.get('field_diff', 0)})"
         )
     detail_items = []
     detail_items.extend(_format_check_item(item) for item in fintablo_summary.get("check_items", [])[:5])

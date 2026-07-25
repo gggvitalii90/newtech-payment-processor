@@ -64,6 +64,27 @@ def test_format_update_notification_uses_single_day_label() -> None:
     assert _ru(r"\u041f\u0435\u0440\u0438\u043e\u0434: 29.06.2026") not in message
 
 
+def test_format_update_notification_keeps_reconciliation_text_readable() -> None:
+    report = {
+        "status": "ok",
+        "start_date": "2026-07-24",
+        "end_date": "2026-07-24",
+        "steps": [
+            {
+                "command": ["scripts/sync_manual_reconciliation.py"],
+                "returncode": 0,
+                "stdout": '{"mirror_rows": 12, "issues": 2, "missing": 1, "extra": 1, "field_diff": 0}',
+            }
+        ],
+    }
+
+    message = format_update_notification(report, "sheet123")
+
+    assert _ru(r"\u0421\u0432\u0435\u0440\u043a\u0430 \u0440\u0443\u0447\u043d\u043e\u0439 \u0442\u0430\u0431\u043b\u0438\u0446\u044b") in message
+    assert _ru(r"\u0421\u0432\u0435\u0440\u043a\u0430: 2 \u0440\u0430\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u0439") in message
+    assert "???" not in message
+
+
 def test_format_update_notification_includes_failed_step_error_excerpt() -> None:
     report = {
         "status": "error",
