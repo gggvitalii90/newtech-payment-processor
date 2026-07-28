@@ -43,3 +43,13 @@
 - [x] Add bounded retry/backoff for Google Sheets HTTP 429/5xx errors; rerun failed dates and keep Telegram reports UTF-8 and readable (local code/tests complete; live rerun pending).
 - [x] Fix daily Telegram reports: one complete report per calendar date, explicit failure on HTTP 429, and valid UTF-8 text without mojibake (local code/tests complete; live validation pending).
 - [ ] After deployment, rerun 26.07.2026 and 27.07.2026 and verify stale black fills are gone from the live sheet.
+
+## Развертывание и безопасность VPS
+- [ ] При каждом обновлении кода на VPS обязательно пересобирать Docker-образ `daily`; перед боевым запуском сверять commit в GitHub, каталоге VPS и внутри образа.
+- [ ] После пересборки выполнить контролируемый прогон и отдельно проверить фактические изменения в Google Sheets, FinTablo и Telegram-отчете.
+- [ ] Усилить SSH: сначала проверить вход по ключу в отдельной сессии, затем отключить вход `root` по паролю и оставить только ключевую авторизацию.
+- [ ] Настроить минимальный UFW, fail2ban и автоматические обновления безопасности; не публиковать наружу порты Docker без необходимости.
+- [ ] Ограничение SSH по IP включать только после определения всех нужных источников доступа; динамические адреса облачных агентов и GitHub Actions нельзя блокировать без отдельного канала деплоя.
+- [ ] Проверить права на `.env`, OAuth-токены и SSH-ключи, настроить резервный снимок VPS и документировать восстановление доступа.
+
+- [ ] Настроить отдельный канал деплоя для облачного Codex. Облачная среда не может напрямую открыть TCP/22 к VPS и не получает SSH-ключ только из секрета без setup-скрипта. Использовать GitHub Actions с self-hosted runner на VPS либо подписанный deploy-webhook: облачная сессия публикует проверенный commit в GitHub, а VPS безопасно забирает и разворачивает именно этот commit.

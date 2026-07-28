@@ -96,3 +96,17 @@ def test_upsert_mode_can_clear_requested_final_dates_when_result_is_empty(monkey
     assert len(deleted) == 1
     assert deleted[0][2] == "\u0418\u0442\u043e\u0433\u043e\u0432\u0430\u044f \u0418\u0421"
     assert deleted[0][3] == {"2026-07-14", "2026-07-15"}
+
+
+def test_file_link_mode_does_not_overwrite_requested_flow_mode():
+    import re
+    from pathlib import Path
+
+    source = Path("scripts/backfill_payment_history.py").read_text(encoding="utf-8")
+
+    assert source.count("file_mode =") == 2
+    assert not re.search(
+        r'^\s*mode = "ИС" if file_path\.parent\.name\.upper\(\)\.endswith\(" ИС"\) else "ПСК"$',
+        source,
+        flags=re.MULTILINE,
+    )

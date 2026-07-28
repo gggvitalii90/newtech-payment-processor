@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
@@ -194,13 +194,13 @@ def main() -> int:
             if not record.date:
                 continue
             payment_date = date.fromisoformat(record.date)
-            mode = "ИС" if file_path.parent.name.upper().endswith(" ИС") else "ПСК"
+            file_mode = "ИС" if file_path.parent.name.upper().endswith(" ИС") else "ПСК"
             record.invoice_link = find_payment_file_link(
                 drive,
                 payment_root_id,
                 file_path,
                 payment_date,
-                mode,
+                file_mode,
                 payment_folder_cache,
                 payment_file_cache,
             )
@@ -230,13 +230,13 @@ def main() -> int:
             if file_path is None:
                 continue
             payment_date = date.fromisoformat(record.date)
-            mode = "ИС" if file_path.parent.name.upper().endswith(" ИС") else "ПСК"
+            file_mode = "ИС" if file_path.parent.name.upper().endswith(" ИС") else "ПСК"
             record.invoice_link = ensure_payment_file(
                 drive,
                 payment_root_id,
                 file_path,
                 payment_date,
-                mode,
+                file_mode,
                 payment_folder_cache,
                 payment_file_cache,
             )
