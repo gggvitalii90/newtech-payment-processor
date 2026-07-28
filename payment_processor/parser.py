@@ -338,7 +338,7 @@ def _extract_invoice_number(purpose: str) -> str:
     patterns = [
         rf"\b\u043f\u043e\s+\u0437\u0430\u043a\u0430\u0437\u0443\s*(?:\u2116\s*)?({token})",
         rf"{invoice_label}(?:\s+\u043d\u0430\s+\u043e\u043f\u043b\u0430\u0442\u0443)?\s*(?:\u2116|#|N|No)?\s*({token})",
-        rf"\b\u0434\u043e\u0433\u043e\u0432\u043e\u0440\u0430?\s*(?:\u2116|#|N|No)\s*({token})",
+        rf"\b\u0434\u043e\u0433\u043e\u0432\u043e\u0440\w*(?:\s+\w+){{0,5}}\s*(?:\u2116|#|N|No)\s*({token})",
         rf"\b\u043f\u043e\s+\u0441\u0447\u0435\u0442\u0443\s*(?:\u2116\s*)?({token})",
         rf"\b\u043f\u043e\s+\u0441\u0447\.\s*(?:\u2116\s*)?({token})",
     ]

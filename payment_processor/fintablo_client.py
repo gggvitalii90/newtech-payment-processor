@@ -39,7 +39,7 @@ def load_fintablo_settings(env: dict[str, str] | None = None) -> FinTabloSetting
         env = load_env()
     token = (env.get("FINTABLO_API_TOKEN") or "").strip()
     if not token:
-        raise FinTabloError("?? ?????? FINTABLO_API_TOKEN ? .env")
+        raise FinTabloError("FINTABLO_API_TOKEN is missing in .env")
     base_url = (env.get("FINTABLO_BASE_URL") or DEFAULT_FINTABLO_BASE_URL).strip().rstrip("/")
     return FinTabloSettings(token=token, base_url=base_url)
 
@@ -54,7 +54,7 @@ def default_transport(request: Request, timeout: int) -> tuple[int, dict[str, st
         headers = {key: value for key, value in exc.headers.items()}
         return int(exc.code), headers, body
     except URLError as exc:
-        raise FinTabloError(f"FinTablo API ??????????: {exc}") from exc
+        raise FinTabloError(f"FinTablo API request failed: {exc}") from exc
 
 
 class FinTabloClient:

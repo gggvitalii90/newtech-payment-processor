@@ -85,10 +85,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mode", choices=["\u041f\u0421\u041a", "\u0418\u0421", "PSK", "IS"], default="\u041f\u0421\u041a")
     parser.add_argument("--skip-download", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--upsert", action="store_true", help="???????? ?????? ?????? ??????? ??? ??????? ???????")
+    parser.add_argument("--upsert", action="store_true", help="replace existing rows instead of adding duplicates")
     parser.add_argument("--reset-state", action="store_true")
     parser.add_argument("--staging-root", default=r"C:\tmp\newtech-payment-history")
-    parser.add_argument("--payment-source", choices=["max", "fintablo"], default="max", help="???????? ????? ??? ????????; ????? ?? ???????? ?? PDF")
+    parser.add_argument("--payment-source", choices=["max", "fintablo"], default="max", help="payment source: max or fintablo; max reads files from PDF")
     return parser.parse_args()
 
 

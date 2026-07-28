@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Iterable
 import re
@@ -34,7 +34,7 @@ def write_google_history(
         updated, appended = upsert_payment_archive(sheets_service, spreadsheet_id, payments)
         payment_count = updated + appended
         if "ИС" in final_sheet_name:
-            final_count = replace_final_rows(sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name)
+            final_count = 0 if not final else replace_final_rows(sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name)
         else:
             updated, appended = upsert_final_rows(
                 sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name,
@@ -47,7 +47,7 @@ def write_google_history(
         else:
             updated, appended = upsert_payment_archive(sheets_service, spreadsheet_id, payments)
             payment_count = updated + appended
-        final_count = replace_final_rows(sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name)
+        final_count = 0 if not final else replace_final_rows(sheets_service, spreadsheet_id, final, sheet_name=final_sheet_name)
         _highlight_fintablo_rows_if_supported(sheets_service, spreadsheet_id, final_sheet_name, _extra_fintablo_names(final, payments))
     return payment_count, final_count
 
@@ -76,6 +76,17 @@ def _amount(value: object) -> str:
     except ValueError:
         return text
 
+def _extra_fintablo_names(final: list[PaymentRecord], chat: list[PaymentRecord]) -> set[str]:
+    # Highlighting is meaningful only for real records, not serialized test placeholders.
+    if not all(isinstance(record, PaymentRecord) for record in final + chat):
+        return set()
+    chat_keys = set().union(*(_match_keys(record) for record in chat)) if chat else set()
+    return {
+        str(record.name).strip()
+        for record in final
+        if _norm(record.name).startswith("fintablo:") and not (_match_keys(record) & chat_keys)
+    }
+
 def _match_keys(record: PaymentRecord) -> set[tuple[str, ...]]:
     date = _date_key(getattr(record, "date", ""))
     amount = _amount(getattr(record, "amount", ""))
@@ -87,8 +98,3 @@ def _match_keys(record: PaymentRecord) -> set[tuple[str, ...]]:
     if invoice:
         keys.add(("invoice", date, amount, invoice))
     return keys
-
-def _extra_fintablo_names(final: list[PaymentRecord], chat: list[PaymentRecord]) -> set[str]:
-    chat_keys = set().union(*(_match_keys(record) for record in chat)) if chat else set()
-    return {str(record.name).strip() for record in final if _norm(record.name).startswith("fintablo:") and not (_match_keys(record) & chat_keys)}
-

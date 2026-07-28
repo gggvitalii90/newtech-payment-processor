@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 import time
@@ -19,7 +19,7 @@ def _execute_google_request(request, retries: int = 5):
         except HttpError as exc:
             if exc.resp.status not in {429, 500, 502, 503, 504} or attempt == retries - 1:
                 raise
-            time.sleep(65 if exc.resp.status == 429 else 2 ** attempt)
+            time.sleep(min(15, 2 ** attempt))
     return request.execute()
 FINAL_SHEET_NAME = "Итоговая"
 FINAL_IS_SHEET_NAME = "Итоговая ИС"
@@ -84,21 +84,23 @@ def setup_payment_sheets(sheets_service, spreadsheet_id: str) -> None:
     }
     missing = [name for name in schemas if name not in existing]
     if missing:
-        sheets_service.spreadsheets().batchUpdate(
+        request = sheets_service.spreadsheets().batchUpdate(
             spreadsheetId=spreadsheet_id,
             body={"requests": [{"addSheet": {"properties": {"title": name}}} for name in missing]},
-        ).execute()
-        existing = _sheet_ids(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute())
+        )
+        _execute_google_request(request)
+        existing = _sheet_ids(_execute_google_request(sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id)))
     for name, (columns, last_column) in schemas.items():
         headers = _read_headers(sheets_service, spreadsheet_id, name, "N")
         if headers != columns:
             if headers:
                 _clear_values(sheets_service, spreadsheet_id, f"'{name}'!A1:N")
             _write_values(sheets_service, spreadsheet_id, f"'{name}'!A1:{last_column}1", [columns])
-        sheets_service.spreadsheets().batchUpdate(
+        request = sheets_service.spreadsheets().batchUpdate(
             spreadsheetId=spreadsheet_id,
             body={"requests": _format_requests(existing[name], len(columns))},
-        ).execute()
+        )
+        _execute_google_request(request)
 
 
 def replace_final_rows(
@@ -170,7 +172,7 @@ def highlight_fintablo_final_rows(
             income_rows.append(offset)
         elif operation == _normalize(OPERATION_EXPENSE):
             expense_rows.append(offset)
-    _clear_row_fills(sheets_service, spreadsheet_id, sheet_name, all_data_rows)
+    _clear_data_grid_fill(sheets_service, spreadsheet_id, sheet_name)
     _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, income_rows, FINTABLO_INCOME_FILL)
     _format_row_numbers(sheets_service, spreadsheet_id, sheet_name, expense_rows, FINTABLO_EXPENSE_FILL)
     return len(income_rows), len(expense_rows)
@@ -271,7 +273,7 @@ def delete_rows_for_dates(
         {"deleteDimension": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": start - 1, "endIndex": end}}}
         for start, end in reversed(ranges)
     ]
-    sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": requests}).execute()
+    _execute_google_request(sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": requests}))
     return len(row_numbers)
 
 def _upsert_rows(
@@ -289,10 +291,10 @@ def _upsert_rows(
         if headers:
             _clear_values(sheets_service, spreadsheet_id, f"'{sheet_name}'!A1:N")
         _write_values(sheets_service, spreadsheet_id, f"'{sheet_name}'!A1:{last_column}1", [columns])
-    response = sheets_service.spreadsheets().values().get(
+    response = _execute_google_request(sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range=f"'{sheet_name}'!A2:{last_column}",
-    ).execute()
+    ))
     existing_by_key = {
         key: index + 2
         for index, row in enumerate(response.get("values", []))
@@ -319,13 +321,13 @@ def _upsert_rows(
     if updates:
         _batch_update_values(sheets_service, spreadsheet_id, updates)
     if new_rows:
-        sheets_service.spreadsheets().values().append(
+        _execute_google_request(sheets_service.spreadsheets().values().append(
             spreadsheetId=spreadsheet_id,
             range=f"'{sheet_name}'!A1",
             valueInputOption="USER_ENTERED",
             insertDataOption="INSERT_ROWS",
             body={"values": _typed_sheet_rows(new_rows, date_index=1, amount_index=len(columns) - 1)},
-        ).execute()
+        ))
     return len(updates), len(new_rows)
 
 
@@ -374,7 +376,7 @@ def _payment_identity_key(
 
 def _payment_document_number(file_name: str) -> str:
     normalized = _normalize(file_name)
-    match = re.search(r"(?:№|no[.]?)\s*(\d+)", normalized, re.IGNORECASE)
+    match = re.search(r"(?:\u2116|no[.]?)\s*(\d+)", normalized, re.IGNORECASE)
     if match:
         return match.group(1)
     match = re.search(r"_\d{2}[.]\d{2}[.]\d{4}_(\d+)(?:_|[.])", normalized)
@@ -390,29 +392,29 @@ def _headers_match_schema(headers: list[str], columns: list[str]) -> bool:
 
 
 def _read_headers(sheets_service, spreadsheet_id: str, sheet_name: str, last_column: str) -> list[str]:
-    response = sheets_service.spreadsheets().values().get(
+    response = _execute_google_request(sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range=f"'{sheet_name}'!A1:{last_column}1",
-    ).execute()
+    ))
     rows = response.get("values", [])
     return [str(value).strip() for value in rows[0]] if rows else []
 
 
 def _clear_values(sheets_service, spreadsheet_id: str, range_name: str) -> None:
-    sheets_service.spreadsheets().values().clear(
+    _execute_google_request(sheets_service.spreadsheets().values().clear(
         spreadsheetId=spreadsheet_id,
         range=range_name,
         body={},
-    ).execute()
+    ))
 
 
 def _write_values(sheets_service, spreadsheet_id: str, range_name: str, values: list[list[str]]) -> None:
-    sheets_service.spreadsheets().values().update(
+    _execute_google_request(sheets_service.spreadsheets().values().update(
         spreadsheetId=spreadsheet_id,
         range=range_name,
         valueInputOption="USER_ENTERED",
         body={"values": values},
-    ).execute()
+    ))
 
 
 def _batch_update_values(
@@ -422,7 +424,7 @@ def _batch_update_values(
 ) -> None:
     if not updates:
         return
-    sheets_service.spreadsheets().values().batchUpdate(
+    _execute_google_request(sheets_service.spreadsheets().values().batchUpdate(
         spreadsheetId=spreadsheet_id,
         body={
             "valueInputOption": "USER_ENTERED",
@@ -431,7 +433,7 @@ def _batch_update_values(
                 for range_name, values in updates
             ],
         },
-    ).execute()
+    ))
 
 
 def _sheet_ids(metadata: dict) -> dict[str, int]:
@@ -447,7 +449,7 @@ def _format_requests(sheet_id: int, column_count: int) -> list[dict]:
         {"updateSheetProperties": {"properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}}, "fields": "gridProperties.frozenRowCount"}},
         {"setBasicFilter": {"filter": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": column_count}}}},
         {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.9, "green": 0.9, "blue": 0.9}, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
-        {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"textFormat": {"bold": False}}}, "fields": "userEnteredFormat.textFormat.bold"}},
+        {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 10000, "startColumnIndex": 0, "endColumnIndex": column_count}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "textFormat": {"bold": False}}}, "fields": "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold"}},
         _number_format_request(sheet_id, 1, {"type": "DATE", "pattern": "dd.mm.yyyy"}),
         _number_format_request(sheet_id, amount_column_index, {"type": "NUMBER", "pattern": "#,##0.00"}),
     ]
@@ -499,11 +501,41 @@ def _clear_row_fills(
         }
         for row_number in row_numbers
     ]
-    sheets_service.spreadsheets().batchUpdate(
+    _execute_google_request(sheets_service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
         body={"requests": requests},
-    ).execute()
+    ))
 
+
+def _clear_data_grid_fill(sheets_service, spreadsheet_id: str, sheet_name: str) -> None:
+    """Reset every data-row background before applying selective highlights."""
+    metadata = _execute_google_request(
+        sheets_service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+        )
+    )
+    for sheet in metadata.get("sheets", []):
+        properties = sheet.get("properties", {})
+        if properties.get("title") != sheet_name:
+            continue
+        grid = properties.get("gridProperties", {})
+        row_count = int(grid.get("rowCount", 1000))
+        column_count = int(grid.get("columnCount", len(FINAL_COLUMNS)))
+        request = {
+            "repeatCell": {
+                "range": {
+                    "sheetId": properties["sheetId"],
+                    "startRowIndex": 1,
+                    "endRowIndex": row_count,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": column_count,
+                },
+                "cell": {"userEnteredFormat": {"backgroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "textFormat": {"bold": False}}},
+                "fields": "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold",
+            }
+        }
+        _execute_google_request(sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": [request]}))
+        return
 def _format_row_numbers(
     sheets_service,
     spreadsheet_id: str,
@@ -540,10 +572,10 @@ def _format_row_numbers(
         }
         for start_row, end_row in ranges
     ]
-    sheets_service.spreadsheets().batchUpdate(
+    _execute_google_request(sheets_service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
         body={"requests": requests},
-    ).execute()
+    ))
 def _normalize(value: str) -> str:
     normalized = re.sub(r"\s+", " ", str(value or "").strip().lower().replace("\u0451", "\u0435"))
     for fmt in ("%d.%m.%Y", "%Y-%m-%d"):

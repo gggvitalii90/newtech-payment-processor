@@ -7,9 +7,11 @@ import csv
 import json
 import re
 import sys
+import time
 from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
+from googleapiclient.errors import HttpError
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -33,8 +35,23 @@ MONTH_NAMES = (
 )
 
 
+
+_RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def _execute_google(request, retries: int = 5):
+    for attempt in range(retries):
+        try:
+            return request.execute()
+        except HttpError as exc:
+            status = getattr(getattr(exc, "resp", None), "status", None)
+            if status not in _RETRYABLE_STATUS_CODES or attempt == retries - 1:
+                raise
+            delay = min(60, 5 * (2 ** attempt)) if status == 429 else min(30, 2 ** attempt)
+            time.sleep(delay)
+    raise RuntimeError("Google request retry loop exhausted")
 def _metadata(sheets, spreadsheet_id: str) -> dict:
-    return sheets.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    return _execute_google(sheets.spreadsheets().get(spreadsheetId=spreadsheet_id))
 
 
 def _sheet_titles(metadata: dict) -> list[str]:
@@ -51,10 +68,10 @@ def discover_manual_sheets(sheets, spreadsheet_id: str) -> list[str]:
 def ensure_mirror_sheet(sheets, spreadsheet_id: str) -> None:
     if MIRROR_SHEET in _sheet_titles(_metadata(sheets, spreadsheet_id)):
         return
-    sheets.spreadsheets().batchUpdate(
+    _execute_google(sheets.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
         body={"requests": [{"addSheet": {"properties": {"title": MIRROR_SHEET}}}]},
-    ).execute()
+    ))
 
 
 def copy_to_mirror(sheets, source_id: str, archive_id: str, sheet_names: list[str]) -> tuple[int, int]:
@@ -63,9 +80,9 @@ def copy_to_mirror(sheets, source_id: str, archive_id: str, sheet_names: list[st
     rows: list[list[str]] = []
     header: list[str] | None = None
     for sheet_name in sheet_names:
-        values = sheets.spreadsheets().values().get(
+        values = _execute_google(sheets.spreadsheets().values().get(
             spreadsheetId=source_id, range=f"'{sheet_name}'!A:O"
-        ).execute().get("values", [])
+        )).get("values", [])
         if values and header is None:
             header = list(values[0][:15])
         for row in values[1:]:
@@ -75,15 +92,15 @@ def copy_to_mirror(sheets, source_id: str, archive_id: str, sheet_names: list[st
     if header is None:
         header = ["№", "Дата"] + [f"Колонка {index}" for index in range(3, 16)]
     payload = [header[:15]] + rows
-    sheets.spreadsheets().values().clear(
+    _execute_google(sheets.spreadsheets().values().clear(
         spreadsheetId=archive_id, range=f"'{MIRROR_SHEET}'!A:O", body={}
-    ).execute()
-    sheets.spreadsheets().values().update(
+    ))
+    _execute_google(sheets.spreadsheets().values().update(
         spreadsheetId=archive_id,
         range=f"'{MIRROR_SHEET}'!A1:O{len(payload)}",
         valueInputOption="USER_ENTERED",
         body={"values": payload},
-    ).execute()
+    ))
     return len(rows), len(header)
 
 

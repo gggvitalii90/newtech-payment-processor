@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import csv
@@ -81,12 +81,6 @@ def build_period_commands(start: date, end: date, staging_root: Path, dry_run: b
     if not dry_run:
         manual_fintablo_command.append("--apply")
     commands.append(manual_fintablo_command)
-    reconciliation_command = [
-        sys.executable, "scripts/sync_manual_reconciliation.py",
-        "--start", start_text, "--end", end_text,
-        "--output", f"reports/manual_reconciliation_{start_text}_{end_text}.csv",
-    ]
-    commands.append(reconciliation_command)
     return commands
 
 
@@ -177,10 +171,10 @@ def _norm_invoice(value: str) -> str:
     return "".join((value or "").lower().replace("\u2116", "").split()).strip(".,")
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="?????? ?????????? ??????? ? ???????? ?????? ?? ???? ??? ??????")
-    parser.add_argument("--date", default="", help="???? ???? YYYY-MM-DD; ??????????? ??? ?????????????")
-    parser.add_argument("--start", default="", help="?????? ??????? YYYY-MM-DD")
-    parser.add_argument("--end", default="", help="????? ??????? YYYY-MM-DD")
+    parser = argparse.ArgumentParser(description="Daily update: collect chats, invoices, payment orders and reconcile")
+    parser.add_argument("--date", default="", help="single date YYYY-MM-DD; used when no range is provided")
+    parser.add_argument("--start", default="", help="range start YYYY-MM-DD")
+    parser.add_argument("--end", default="", help="range end YYYY-MM-DD")
     parser.add_argument("--staging-root", default=r"C:\tmp\newtech-payment-history")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-telegram", action="store_true")
@@ -260,7 +254,7 @@ def _selected_period(args: argparse.Namespace) -> tuple[date, date]:
     start = date.fromisoformat(start_text)
     end = date.fromisoformat(end_text)
     if end < start:
-        raise SystemExit("--end ?? ????? ???? ?????? --start")
+        raise SystemExit("--end must not be earlier than --start")
     return start, end
 
 

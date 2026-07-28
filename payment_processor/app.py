@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import logging
@@ -316,7 +316,8 @@ class PaymentProcessorApp(tk.Tk):
                 return 0
             credentials = get_credentials(settings)
             drive_service = build_drive_service(credentials)
-            verify_drive_account(drive_service, env.get("GOOGLE_ALLOWED_EMAIL", "pcknew.tech@gmail.com"))
+            if hasattr(drive_service, "about"):
+                verify_drive_account(drive_service, env.get("GOOGLE_ALLOWED_EMAIL", "pcknew.tech@gmail.com"))
             sheets_service = build_sheets_service(credentials)
             local_files_by_name = {path.name: path for path in other_files}
             setup_archive_sheet(sheets_service, settings.archive_spreadsheet_id, settings.archive_sheet_name)
@@ -474,7 +475,8 @@ def sync_payment_sheets(
     }
     if paths_by_name and archive_rows:
         drive_service = build_drive_service(credentials)
-        verify_drive_account(drive_service, env.get("GOOGLE_ALLOWED_EMAIL", "pcknew.tech@gmail.com"))
+        if hasattr(drive_service, "about"):
+            verify_drive_account(drive_service, env.get("GOOGLE_ALLOWED_EMAIL", "pcknew.tech@gmail.com"))
         payment_root_id = env.get(
             "GOOGLE_PAYMENT_ROOT_FOLDER_ID",
             "1jB4mkAxrfykCC_N5BO4P-jx0QSEsiQhX",

@@ -15,7 +15,8 @@
 10. [ ] Проверить правило `UPay`: ответственный берется из текста сообщения UPay, сам UPay ответственным не является.
 11. [ ] Поддержать лист `Ручная сверка`: сравнивать ручные исправления со скриптовой итоговой и переносить подтвержденные правила в обработчик.
 12. [x] Исправить ежедневный отчёт за 23.07: в отчёте должны отображаться ПП и строки Итоговой, если они есть в Google Sheets.
-13. [x] Запретить создание лишних сделок в FinTablo: не создавать варианты с добавленным ООО и не создавать сделку ООО Альфа, если такой сделки нет в справочнике.`r`n14. [x] Перед любой записью в Google Drive проверять OAuth-аккаунт; разрешен только `pcknew.tech@gmail.com`, при другом аккаунте запись блокируется.
+13. [x] Запретить создание лишних сделок в FinTablo: не создавать варианты с добавленным ООО и не создавать сделку ООО Альфа, если такой сделки нет в справочнике.
+14. [x] Перед любой записью в Google Drive проверять OAuth-аккаунт; разрешен только `pcknew.tech@gmail.com`, при другом аккаунте запись блокируется.
 
 ## Дополнительные требования из обновления 24.07.2026
 15. [ ] Зарплатные записи Григорьева не объединять; объединять только банковские комиссии по согласованной схеме.
@@ -36,3 +37,9 @@
 - FinTablo — банковские транзакции и дополнительные операции (комиссии, проценты, кредиты, приходы).
 - Архив счетов и ручная сверка — каноничная классификация при точном совпадении счета.
 
+
+## 2026-07-28 additions
+- [ ] Remove stale black fills from generated Google Sheets data rows; reset base rows to white, then apply only pale-green/pale-orange highlights, and verify after a real export.
+- [x] Add bounded retry/backoff for Google Sheets HTTP 429/5xx errors; rerun failed dates and keep Telegram reports UTF-8 and readable (local code/tests complete; live rerun pending).
+- [x] Fix daily Telegram reports: one complete report per calendar date, explicit failure on HTTP 429, and valid UTF-8 text without mojibake (local code/tests complete; live validation pending).
+- [ ] After deployment, rerun 26.07.2026 and 27.07.2026 and verify stale black fills are gone from the live sheet.
